@@ -230,15 +230,28 @@
                 status.textContent = 'Sẵn sàng! Nhấn giữ nút để bắt đầu.';
                 logDebug("Đã cấp quyền Micro thành công.");
 
-                // Tìm kiếm MIME type được hỗ trợ tốt nhất trên thiết bị
-                const types = [
+                // Kiểm tra thiết bị iOS/Safari để ưu tiên audio/mp4
+                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                              (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+                const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+                
+                logDebug(`Hệ điều hành: ${isIOS ? 'iOS (iPhone/iPad)' : 'Khác'}, Trình duyệt Safari: ${isSafari}`);
+
+                // Đặt ưu tiên định dạng: iOS/Safari BẮT BUỘC phải dùng audio/mp4 để thẻ <audio> phát được
+                const types = isIOS || isSafari ? [
+                    'audio/mp4',
+                    'audio/aac',
+                    'audio/webm;codecs=opus',
+                    'audio/webm',
+                    'audio/wav'
+                ] : [
                     'audio/webm;codecs=opus',
                     'audio/webm',
                     'audio/mp4',
                     'audio/ogg',
-                    'audio/wav',
-                    'audio/aac'
+                    'audio/wav'
                 ];
+
                 for (const type of types) {
                     if (MediaRecorder.isTypeSupported(type)) {
                         mimeType = type;
@@ -324,7 +337,7 @@
 
                     mediaRecorder.onstop = () => {
                         logDebug(`MediaRecorder đã dừng. Tổng số chunks: ${audioChunks.length}`);
-                        const actualMimeType = mediaRecorder.mimeType || mimeType || 'audio/webm';
+                        const actualMimeType = mediaRecorder.mimeType || mimeType || 'audio/mp4';
                         
                         try {
                             const audioBlob = new Blob(audioChunks, { type: actualMimeType });
