@@ -394,21 +394,26 @@
 
         const stopRecording = (e) => {
             e.preventDefault();
-            logDebug("Đã thả tay ra khỏi nút ghi âm.");
+            logDebug("Đã thả tay ra khỏi nút ghi âm. Sẽ dừng sau 500ms...");
             
-            if (mediaRecorder && mediaRecorder.state === 'recording') {
-                try {
-                    mediaRecorder.stop();
-                    wave.classList.remove('active'); // Tắt sóng âm hoạt họa
-                    recordBtn.style.backgroundColor = '#007aff';
-                    status.textContent = '⌛ Đang xử lý âm thanh...';
-                    logDebug("MediaRecorder.stop() đã gọi.");
-                } catch (stopErr) {
-                    logDebug(`❌ Lỗi khi gọi MediaRecorder.stop(): ${stopErr.name} - ${stopErr.message}`);
+            // Cập nhật giao diện nút ngay lập tức để tạo cảm giác phản hồi nhanh
+            recordBtn.style.backgroundColor = '#007aff';
+            wave.classList.remove('active'); // Tắt sóng âm hoạt họa
+            status.textContent = '⌛ Đang hoàn tất ghi âm...';
+
+            // Trì hoãn 500ms trước khi dừng ghi âm thực tế để không bị mất âm đuôi
+            setTimeout(() => {
+                if (mediaRecorder && mediaRecorder.state === 'recording') {
+                    try {
+                        mediaRecorder.stop();
+                        logDebug("MediaRecorder.stop() đã gọi sau 500ms delay.");
+                    } catch (stopErr) {
+                        logDebug(`❌ Lỗi khi gọi MediaRecorder.stop(): ${stopErr.name} - ${stopErr.message}`);
+                    }
+                } else {
+                    logDebug(`Không thể dừng: mediaRecorder state đang là ${mediaRecorder ? mediaRecorder.state : 'null'}`);
                 }
-            } else {
-                logDebug(`Không thể dừng: mediaRecorder state đang là ${mediaRecorder ? mediaRecorder.state : 'null'}`);
-            }
+            }, 500);
         };
 
         recordBtn.addEventListener('mousedown', startRecording);
