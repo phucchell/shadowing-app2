@@ -22,7 +22,7 @@
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border-radius: 28px;
-            padding: 40px 30px;
+            padding: 30px 24px;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.02);
             display: flex;
             flex-direction: column;
@@ -66,6 +66,8 @@
             align-items: center;
             justify-content: center;
             padding: 0 10px;
+            width: 100%;
+            word-break: break-word;
         }
 
         #playBtn {
@@ -143,6 +145,25 @@
             0%, 100% { height: 8px; }
             50% { height: 28px; }
         }
+
+        /* Khung Debug hiển thị lỗi và trạng thái trực tiếp trên màn hình */
+        #debug {
+            margin-top: 20px;
+            font-family: monospace;
+            font-size: 10px;
+            color: #555;
+            text-align: left;
+            width: 100%;
+            border-top: 1px dashed #ccc;
+            padding-top: 10px;
+            word-break: break-all;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 8px;
+            max-height: 120px;
+            overflow-y: auto;
+            box-sizing: border-box;
+        }
     </style>
 </head>
 
@@ -166,11 +187,19 @@
         <button id="playBtn">
             <span>▶</span> Nghe lại
         </button>
+
+        <div id="debug">Đang khởi tạo hệ thống debug...</div>
     </div>
 
     <audio id="audioPlayback" hidden></audio>
 
     <script>
+        // Hệ thống bắt lỗi toàn cục
+        window.onerror = function (message, source, lineno, colno, error) {
+            logDebug(`🚨 LỖI TOÀN CỤC:<br>${message}<br>Dòng: ${lineno}:${colno}`);
+            return false;
+        };
+
         let mediaStream = null;
         let mediaRecorder = null;
         let audioChunks = [];
@@ -182,12 +211,24 @@
         const status = document.getElementById('status');
         const audioPlayback = document.getElementById('audioPlayback');
         const wave = document.getElementById('wave');
+        const debugEl = document.getElementById('debug');
+
+        // Hàm log thông tin debug
+        const logDebug = (msg) => {
+            console.log(msg);
+            const time = new Date().toLocaleTimeString();
+            debugEl.innerHTML += `[${time}] ${msg}<br>`;
+            debugEl.scrollTop = debugEl.scrollHeight; // Cuộn xuống dưới cùng
+        };
+
+        logDebug("Ứng dụng bắt đầu.");
 
         // Khởi tạo Micro một lần duy nhất khi load trang
         navigator.mediaDevices.getUserMedia({ audio: true })
             .then(stream => {
                 mediaStream = stream;
                 status.textContent = 'Sẵn sàng! Nhấn giữ nút để bắt đầu.';
+                logDebug("Đã cấp quyền Micro thành công.");
 
                 // Tìm kiếm MIME type được hỗ trợ tốt nhất trên thiết bị
                 const types = [
@@ -204,11 +245,12 @@
                         break;
                     }
                 }
-                console.log('MIME type được chọn:', mimeType);
+                logDebug(`Định dạng hỗ trợ được chọn: ${mimeType}`);
             })
             .catch(err => {
                 console.error('Lỗi cấp quyền micro:', err);
                 status.textContent = 'Lỗi cấp quyền Micro. Hãy tải lại trang và cho phép.';
+                logDebug(`❌ Lỗi cấp quyền Micro: ${err.name} - ${err.message}`);
             });
 
         // Hàm cập nhật giao diện của nút Nghe lại / Tạm dừng
@@ -222,32 +264,39 @@
                 playBtn.innerHTML = '<span>▶</span> Nghe lại';
                 playBtn.style.backgroundColor = '#34c759'; // Đổi lại màu xanh lá khi dừng
                 playBtn.style.boxShadow = '0 8px 16px rgba(52, 199, 89, 0.35)';
-                status.textContent = 'Sẵn sàng! Nhấn giữ nút xanh dương để ghi âm mới.';
+                status.textContent = 'Sẵn sàng! Nhấn giữ nút màu xanh để ghi âm mới.';
             }
         };
 
         // Xử lý sự kiện nhấn nút Nghe lại (Được coi là cử chỉ người dùng trực tiếp -> 100% hoạt động trên iOS)
         playBtn.addEventListener('click', () => {
+            logDebug("Đã nhấn nút 'Nghe lại'.");
             if (audioPlayback.paused) {
+                logDebug(`Bắt đầu phát file: ${audioPlayback.src.substring(0, 40)}...`);
                 audioPlayback.play().then(() => {
+                    logDebug("▶ Âm thanh đang phát.");
                     updatePlayBtnState(true);
                 }).catch(err => {
                     console.error('Lỗi khi phát lại:', err);
-                    status.textContent = 'Lỗi phát âm thanh. Vui lòng thử lại!';
+                    status.innerHTML = `<span style="color: #ff3b30;">Lỗi phát: ${err.name}</span>`;
+                    logDebug(`❌ LỖI PHÁT ÂM THANH: ${err.name} - ${err.message}`);
                 });
             } else {
+                logDebug("Đã nhấn tạm dừng.");
                 audioPlayback.pause();
                 updatePlayBtnState(false);
             }
         });
 
         audioPlayback.onended = () => {
+            logDebug("⏹ Phát âm thanh kết thúc.");
             updatePlayBtnState(false);
         };
 
         // Xử lý sự kiện nhấn giữ (hỗ trợ cả trackpad trên Mac và cảm ứng trên iPhone)
         const startRecording = (e) => {
             e.preventDefault();
+            logDebug("Bắt đầu nhấn giữ ghi âm.");
             
             // Ẩn nút phát lại cũ khi bắt đầu thu âm mới
             playBtn.classList.remove('visible');
@@ -255,51 +304,78 @@
             updatePlayBtnState(false);
             
             if (mediaStream) {
-                // TẠO MỚI MediaRecorder CHO MỖI PHIÊN GHI ÂM
-                // Đây là cách duy nhất để tránh lỗi WebKit đứng hình/lỗi mã hóa khi dùng lại trên iOS Safari
                 audioChunks = []; // Reset dữ liệu đệm trước khi thu âm mới
                 
-                const options = mimeType ? { mimeType } : {};
-                mediaRecorder = new MediaRecorder(mediaStream, options);
+                try {
+                    const options = mimeType ? { mimeType } : {};
+                    mediaRecorder = new MediaRecorder(mediaStream, options);
+                    logDebug(`Đã khởi tạo MediaRecorder mới.`);
 
-                mediaRecorder.ondataavailable = event => {
-                    if (event.data && event.data.size > 0) {
-                        audioChunks.push(event.data);
-                    }
-                };
+                    mediaRecorder.ondataavailable = event => {
+                        if (event.data && event.data.size > 0) {
+                            audioChunks.push(event.data);
+                            logDebug(`Nhận chunk: ${event.data.size} bytes. Tổng chunks: ${audioChunks.length}`);
+                        }
+                    };
 
-                mediaRecorder.onstop = () => {
-                    const actualMimeType = mediaRecorder.mimeType || mimeType || 'audio/webm';
-                    const audioBlob = new Blob(audioChunks, { type: actualMimeType });
-                    
-                    if (currentAudioUrl) {
-                        URL.revokeObjectURL(currentAudioUrl);
-                    }
+                    mediaRecorder.onerror = event => {
+                        logDebug(`❌ Lỗi MediaRecorder: ${event.error.name} - ${event.error.message}`);
+                    };
 
-                    currentAudioUrl = URL.createObjectURL(audioBlob);
-                    audioPlayback.src = currentAudioUrl;
-                    
-                    // Hiển thị nút phát lại và cập nhật trạng thái sẵn sàng
-                    playBtn.classList.add('visible');
-                    updatePlayBtnState(false);
-                    status.textContent = '🎙️ Đã ghi âm xong! Nhấn "Nghe lại" ở dưới.';
-                };
+                    mediaRecorder.onstop = () => {
+                        logDebug(`MediaRecorder đã dừng. Tổng số chunks: ${audioChunks.length}`);
+                        const actualMimeType = mediaRecorder.mimeType || mimeType || 'audio/webm';
+                        
+                        try {
+                            const audioBlob = new Blob(audioChunks, { type: actualMimeType });
+                            logDebug(`Đã tạo Blob thành công. Kích thước: ${audioBlob.size} bytes. Kiểu: ${audioBlob.type}`);
+                            
+                            if (currentAudioUrl) {
+                                URL.revokeObjectURL(currentAudioUrl);
+                            }
 
-                mediaRecorder.start();
-                wave.classList.add('active'); // Kích hoạt hiệu ứng sóng âm hoạt họa
-                status.textContent = '🎙️ Đang ghi âm... (Thả ra để lưu)';
-                recordBtn.style.backgroundColor = '#ff3b30';
+                            currentAudioUrl = URL.createObjectURL(audioBlob);
+                            audioPlayback.src = currentAudioUrl;
+                            logDebug(`Đã gán src thành công: ${currentAudioUrl.substring(0, 45)}...`);
+                            
+                            // Hiển thị nút phát lại
+                            playBtn.classList.add('visible');
+                            updatePlayBtnState(false);
+                            status.textContent = '🎙️ Đã ghi âm xong! Nhấn "Nghe lại" ở dưới.';
+                        } catch (blobErr) {
+                            logDebug(`❌ Lỗi tạo Blob/URL: ${blobErr.name} - ${blobErr.message}`);
+                        }
+                    };
+
+                    mediaRecorder.start();
+                    wave.classList.add('active'); // Kích hoạt hiệu ứng sóng âm hoạt họa
+                    status.textContent = '🎙️ Đang ghi âm... (Thả ra để lưu)';
+                    recordBtn.style.backgroundColor = '#ff3b30';
+                    logDebug("MediaRecorder.start() thành công.");
+                } catch (recErr) {
+                    logDebug(`❌ Lỗi khi khởi động MediaRecorder: ${recErr.name} - ${recErr.message}`);
+                }
+            } else {
+                logDebug("❌ Không thể ghi âm: mediaStream chưa sẵn sàng.");
             }
         };
 
         const stopRecording = (e) => {
             e.preventDefault();
+            logDebug("Đã thả tay ra khỏi nút ghi âm.");
             
             if (mediaRecorder && mediaRecorder.state === 'recording') {
-                mediaRecorder.stop();
-                wave.classList.remove('active'); // Tắt sóng âm hoạt họa
-                recordBtn.style.backgroundColor = '#007aff';
-                status.textContent = '⌛ Đang xử lý âm thanh...';
+                try {
+                    mediaRecorder.stop();
+                    wave.classList.remove('active'); // Tắt sóng âm hoạt họa
+                    recordBtn.style.backgroundColor = '#007aff';
+                    status.textContent = '⌛ Đang xử lý âm thanh...';
+                    logDebug("MediaRecorder.stop() đã gọi.");
+                } catch (stopErr) {
+                    logDebug(`❌ Lỗi khi gọi MediaRecorder.stop(): ${stopErr.name} - ${stopErr.message}`);
+                }
+            } else {
+                logDebug(`Không thể dừng: mediaRecorder state đang là ${mediaRecorder ? mediaRecorder.state : 'null'}`);
             }
         };
 
