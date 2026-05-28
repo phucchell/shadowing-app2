@@ -171,9 +171,11 @@
     <audio id="audioPlayback" hidden></audio>
 
     <script>
-        let mediaRecorder;
+        let mediaStream = null;
+        let mediaRecorder = null;
         let audioChunks = [];
         let currentAudioUrl = null;
+        let mimeType = '';
 
         const recordBtn = document.getElementById('recordBtn');
         const playBtn = document.getElementById('playBtn');
@@ -181,13 +183,13 @@
         const audioPlayback = document.getElementById('audioPlayback');
         const wave = document.getElementById('wave');
 
-        // Khởi tạo Micro
+        // Khởi tạo Micro một lần duy nhất khi load trang
         navigator.mediaDevices.getUserMedia({ audio: true })
             .then(stream => {
+                mediaStream = stream;
                 status.textContent = 'Sẵn sàng! Nhấn giữ nút để bắt đầu.';
 
-                // Tìm MIME type được hỗ trợ tốt nhất trên thiết bị (đặc biệt là iOS)
-                let mimeType = '';
+                // Tìm kiếm MIME type được hỗ trợ tốt nhất trên thiết bị
                 const types = [
                     'audio/webm;codecs=opus',
                     'audio/webm',
@@ -202,33 +204,7 @@
                         break;
                     }
                 }
-
                 console.log('MIME type được chọn:', mimeType);
-                const options = mimeType ? { mimeType } : {};
-                mediaRecorder = new MediaRecorder(stream, options);
-
-                mediaRecorder.ondataavailable = event => {
-                    audioChunks.push(event.data);
-                };
-
-                mediaRecorder.onstop = () => {
-                    const actualMimeType = mediaRecorder.mimeType || mimeType || 'audio/webm';
-                    const audioBlob = new Blob(audioChunks, { type: actualMimeType });
-                    
-                    if (currentAudioUrl) {
-                        URL.revokeObjectURL(currentAudioUrl);
-                    }
-
-                    currentAudioUrl = URL.createObjectURL(audioBlob);
-                    audioPlayback.src = currentAudioUrl;
-                    
-                    // Hiển thị nút phát lại và cập nhật trạng thái
-                    playBtn.classList.add('visible');
-                    updatePlayBtnState(false);
-                    status.textContent = '🎙️ Đã ghi âm xong! Nhấn "Nghe lại" ở dưới.';
-
-                    audioChunks = []; // Làm sạch buffer
-                };
             })
             .catch(err => {
                 console.error('Lỗi cấp quyền micro:', err);
@@ -275,14 +251,44 @@
             
             // Ẩn nút phát lại cũ khi bắt đầu thu âm mới
             playBtn.classList.remove('visible');
+            audioPlayback.pause();
+            updatePlayBtnState(false);
             
-            if (mediaRecorder && mediaRecorder.state === 'inactive') {
+            if (mediaStream) {
+                // TẠO MỚI MediaRecorder CHO MỖI PHIÊN GHI ÂM
+                // Đây là cách duy nhất để tránh lỗi WebKit đứng hình/lỗi mã hóa khi dùng lại trên iOS Safari
+                audioChunks = []; // Reset dữ liệu đệm trước khi thu âm mới
+                
+                const options = mimeType ? { mimeType } : {};
+                mediaRecorder = new MediaRecorder(mediaStream, options);
+
+                mediaRecorder.ondataavailable = event => {
+                    if (event.data && event.data.size > 0) {
+                        audioChunks.push(event.data);
+                    }
+                };
+
+                mediaRecorder.onstop = () => {
+                    const actualMimeType = mediaRecorder.mimeType || mimeType || 'audio/webm';
+                    const audioBlob = new Blob(audioChunks, { type: actualMimeType });
+                    
+                    if (currentAudioUrl) {
+                        URL.revokeObjectURL(currentAudioUrl);
+                    }
+
+                    currentAudioUrl = URL.createObjectURL(audioBlob);
+                    audioPlayback.src = currentAudioUrl;
+                    
+                    // Hiển thị nút phát lại và cập nhật trạng thái sẵn sàng
+                    playBtn.classList.add('visible');
+                    updatePlayBtnState(false);
+                    status.textContent = '🎙️ Đã ghi âm xong! Nhấn "Nghe lại" ở dưới.';
+                };
+
                 mediaRecorder.start();
                 wave.classList.add('active'); // Kích hoạt hiệu ứng sóng âm hoạt họa
                 status.textContent = '🎙️ Đang ghi âm... (Thả ra để lưu)';
                 recordBtn.style.backgroundColor = '#ff3b30';
-                audioPlayback.pause();
-                updatePlayBtnState(false);
             }
         };
 
