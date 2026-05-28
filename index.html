@@ -54,25 +54,74 @@
     <script>
         let mediaRecorder;
         let audioChunks = [];
+        let currentAudioUrl = null;
+        let audioUnlocked = false;
+
         const recordBtn = document.getElementById('recordBtn');
         const status = document.getElementById('status');
         const audioPlayback = document.getElementById('audioPlayback');
+
+        // Hàm kích hoạt (unlock) âm thanh trên iOS Safari bằng âm thanh tĩnh base64 cực ngắn
+        const unlockAudio = () => {
+            if (audioUnlocked) return;
+            audioPlayback.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+            audioPlayback.play().then(() => {
+                audioPlayback.pause();
+                audioUnlocked = true;
+                console.log('Audio unlocked successfully.');
+            }).catch(err => {
+                console.log('Audio unlock check (normal if first touch):', err);
+            });
+        };
 
         // Khởi tạo Micro
         navigator.mediaDevices.getUserMedia({ audio: true })
             .then(stream => {
                 status.textContent = 'Sẵn sàng! Nhấn giữ nút để bắt đầu.';
-                mediaRecorder = new MediaRecorder(stream);
+
+                // Tìm MIME type được hỗ trợ tốt nhất trên thiết bị (đặc biệt là iOS)
+                let mimeType = '';
+                const types = [
+                    'audio/webm;codecs=opus',
+                    'audio/webm',
+                    'audio/mp4',
+                    'audio/ogg',
+                    'audio/wav',
+                    'audio/aac'
+                ];
+                for (const type of types) {
+                    if (MediaRecorder.isTypeSupported(type)) {
+                        mimeType = type;
+                        break;
+                    }
+                }
+
+                console.log('MIME type được chọn:', mimeType);
+                const options = mimeType ? { mimeType } : {};
+                mediaRecorder = new MediaRecorder(stream, options);
 
                 mediaRecorder.ondataavailable = event => {
                     audioChunks.push(event.data);
                 };
 
                 mediaRecorder.onstop = () => {
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                    const audioUrl = URL.createObjectURL(audioBlob);
-                    audioPlayback.src = audioUrl;
-                    audioPlayback.play();
+                    // Sử dụng MIME type thực tế của mediaRecorder để đóng gói blob chính xác
+                    const actualMimeType = mediaRecorder.mimeType || mimeType || 'audio/webm';
+                    const audioBlob = new Blob(audioChunks, { type: actualMimeType });
+                    
+                    // Giải phóng URL cũ để tối ưu bộ nhớ
+                    if (currentAudioUrl) {
+                        URL.revokeObjectURL(currentAudioUrl);
+                    }
+
+                    currentAudioUrl = URL.createObjectURL(audioBlob);
+                    audioPlayback.src = currentAudioUrl;
+                    
+                    // Phát lại âm thanh (đã được unlock trước đó từ sự kiện touch/click)
+                    audioPlayback.play().catch(err => {
+                        console.error('Lỗi phát âm thanh:', err);
+                        status.textContent = 'Lỗi phát âm thanh. Vui lòng thử lại!';
+                    });
 
                     status.textContent = '🎧 Đang phát lại...';
                     audioChunks = []; // Làm sạch buffer
@@ -83,12 +132,15 @@
                 };
             })
             .catch(err => {
+                console.error('Lỗi cấp quyền micro:', err);
                 status.textContent = 'Lỗi cấp quyền Micro. Hãy tải lại trang và cho phép.';
             });
 
         // Xử lý sự kiện nhấn giữ (hỗ trợ cả trackpad trên Mac và cảm ứng trên iPhone)
         const startRecording = (e) => {
             e.preventDefault();
+            unlockAudio(); // Mở khóa âm thanh ngay khi người dùng chạm/nhấn nút
+            
             if (mediaRecorder && mediaRecorder.state === 'inactive') {
                 mediaRecorder.start();
                 status.textContent = '🎙️ Đang ghi âm... (Thả ra để nghe)';
@@ -99,6 +151,8 @@
 
         const stopRecording = (e) => {
             e.preventDefault();
+            unlockAudio(); // Đảm bảo âm thanh được mở khóa khi thả tay
+            
             if (mediaRecorder && mediaRecorder.state === 'recording') {
                 mediaRecorder.stop();
                 recordBtn.style.backgroundColor = '#007aff';
