@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Repeat Recorder</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-family: -apple-system, sans-serif;
+            background-color: #f2f2f7;
+            margin: 0;
+        }
+
+        #recordBtn {
+            padding: 24px 48px;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 50px;
+            border: none;
+            background-color: #007aff;
+            color: white;
+            cursor: pointer;
+            user-select: none;
+            box-shadow: 0 10px 20px rgba(0, 122, 255, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        #recordBtn:active {
+            background-color: #ff3b30;
+            box-shadow: 0 4px 8px rgba(255, 59, 48, 0.3);
+            transform: scale(0.96);
+        }
+
+        #status {
+            margin-top: 24px;
+            font-size: 16px;
+            color: #666;
+            font-weight: 500;
+        }
+    </style>
+</head>
+
+<body>
+    <button id="recordBtn">Nhấn giữ để nói</button>
+    <div id="status">Đang đợi cấp quyền micro...</div>
+    <audio id="audioPlayback" hidden></audio>
+
+    <script>
+        let mediaRecorder;
+        let audioChunks = [];
+        const recordBtn = document.getElementById('recordBtn');
+        const status = document.getElementById('status');
+        const audioPlayback = document.getElementById('audioPlayback');
+
+        // Khởi tạo Micro
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(stream => {
+                status.textContent = 'Sẵn sàng! Nhấn giữ nút để bắt đầu.';
+                mediaRecorder = new MediaRecorder(stream);
+
+                mediaRecorder.ondataavailable = event => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    audioPlayback.src = audioUrl;
+                    audioPlayback.play();
+
+                    status.textContent = '🎧 Đang phát lại...';
+                    audioChunks = []; // Làm sạch buffer
+
+                    audioPlayback.onended = () => {
+                        status.textContent = 'Sẵn sàng! Nhấn giữ nút để tiếp tục.';
+                    };
+                };
+            })
+            .catch(err => {
+                status.textContent = 'Lỗi cấp quyền Micro. Hãy tải lại trang và cho phép.';
+            });
+
+        // Xử lý sự kiện nhấn giữ (hỗ trợ cả trackpad trên Mac và cảm ứng trên iPhone)
+        const startRecording = (e) => {
+            e.preventDefault();
+            if (mediaRecorder && mediaRecorder.state === 'inactive') {
+                mediaRecorder.start();
+                status.textContent = '🎙️ Đang ghi âm... (Thả ra để nghe)';
+                recordBtn.style.backgroundColor = '#ff3b30';
+                audioPlayback.pause(); // Dừng phát nếu đang nghe dở câu cũ
+            }
+        };
+
+        const stopRecording = (e) => {
+            e.preventDefault();
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                recordBtn.style.backgroundColor = '#007aff';
+            }
+        };
+
+        recordBtn.addEventListener('mousedown', startRecording);
+        recordBtn.addEventListener('mouseup', stopRecording);
+        recordBtn.addEventListener('touchstart', startRecording, { passive: false });
+        recordBtn.addEventListener('touchend', stopRecording, { passive: false });
+    </script>
+</body>
+
+</html>
