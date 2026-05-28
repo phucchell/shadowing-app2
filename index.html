@@ -12,43 +12,162 @@
             align-items: center;
             justify-content: center;
             height: 100vh;
-            font-family: -apple-system, sans-serif;
-            background-color: #f2f2f7;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             margin: 0;
+            background: linear-gradient(135deg, #f2f2f7 0%, #e5e5ea 100%);
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 28px;
+            padding: 40px 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.02);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 320px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            text-align: center;
+            transition: all 0.3s ease;
         }
 
         #recordBtn {
             padding: 24px 48px;
             font-size: 20px;
-            font-weight: bold;
+            font-weight: 700;
             border-radius: 50px;
             border: none;
             background-color: #007aff;
             color: white;
             cursor: pointer;
             user-select: none;
-            box-shadow: 0 10px 20px rgba(0, 122, 255, 0.3);
-            transition: all 0.2s ease;
+            -webkit-user-select: none;
+            box-shadow: 0 10px 24px rgba(0, 122, 255, 0.35);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            outline: none;
         }
 
         #recordBtn:active {
             background-color: #ff3b30;
-            box-shadow: 0 4px 8px rgba(255, 59, 48, 0.3);
+            box-shadow: 0 6px 16px rgba(255, 59, 48, 0.4);
             transform: scale(0.96);
         }
 
         #status {
             margin-top: 24px;
+            font-size: 15px;
+            color: #555;
+            font-weight: 600;
+            line-height: 1.4;
+            min-height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 10px;
+        }
+
+        #playBtn {
+            padding: 0;
             font-size: 16px;
-            color: #666;
-            font-weight: 500;
+            font-weight: 600;
+            border-radius: 50px;
+            border: none;
+            background-color: #34c759;
+            color: white;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+            box-shadow: 0 8px 16px rgba(52, 199, 89, 0.35);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            opacity: 0;
+            transform: scale(0.8);
+            pointer-events: none;
+            height: 0;
+            overflow: hidden;
+            margin-top: 0;
+        }
+
+        #playBtn.visible {
+            opacity: 1;
+            transform: scale(1);
+            pointer-events: auto;
+            height: auto;
+            padding: 16px 32px;
+            margin-top: 10px;
+        }
+
+        #playBtn:active {
+            transform: scale(0.95);
+            box-shadow: 0 4px 8px rgba(52, 199, 89, 0.2);
+        }
+
+        /* Hiệu ứng sóng âm khi ghi âm */
+        .recording-wave {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            height: 30px;
+            margin-top: 20px;
+            opacity: 0;
+            transition: all 0.3s ease;
+            transform: scale(0.8);
+        }
+
+        .recording-wave.active {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .bar {
+            width: 4px;
+            height: 8px;
+            background-color: #ff3b30;
+            border-radius: 2px;
+            animation: pulse 0.8s ease-in-out infinite;
+        }
+
+        .bar:nth-child(1) { animation-delay: 0.1s; }
+        .bar:nth-child(2) { animation-delay: 0.2s; }
+        .bar:nth-child(3) { animation-delay: 0.3s; }
+        .bar:nth-child(4) { animation-delay: 0.4s; }
+        .bar:nth-child(5) { animation-delay: 0.5s; }
+
+        @keyframes pulse {
+            0%, 100% { height: 8px; }
+            50% { height: 28px; }
         }
     </style>
 </head>
 
 <body>
-    <button id="recordBtn">Nhấn giữ để nói</button>
-    <div id="status">Đang đợi cấp quyền micro...</div>
+    <div class="card">
+        <h1 style="margin: 0 0 5px 0; font-size: 24px; color: #1c1c1e; font-weight: 700;">Repeat Recorder</h1>
+        <p style="margin: 0 0 25px 0; font-size: 13px; color: #8e8e93; font-weight: 500; letter-spacing: 0.3px;">Shadowing & Phát âm</p>
+        
+        <button id="recordBtn">Nhấn giữ để nói</button>
+        
+        <div class="recording-wave" id="wave">
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+        </div>
+
+        <div id="status">Đang đợi cấp quyền micro...</div>
+        
+        <button id="playBtn">
+            <span>▶</span> Nghe lại
+        </button>
+    </div>
+
     <audio id="audioPlayback" hidden></audio>
 
     <script>
@@ -58,8 +177,10 @@
         let audioUnlocked = false;
 
         const recordBtn = document.getElementById('recordBtn');
+        const playBtn = document.getElementById('playBtn');
         const status = document.getElementById('status');
         const audioPlayback = document.getElementById('audioPlayback');
+        const wave = document.getElementById('wave');
 
         // Hàm kích hoạt (unlock) âm thanh trên iOS Safari bằng âm thanh tĩnh base64 cực ngắn
         const unlockAudio = () => {
@@ -70,7 +191,7 @@
                 audioUnlocked = true;
                 console.log('Audio unlocked successfully.');
             }).catch(err => {
-                console.log('Audio unlock check (normal if first touch):', err);
+                console.log('Audio unlock check:', err);
             });
         };
 
@@ -105,11 +226,9 @@
                 };
 
                 mediaRecorder.onstop = () => {
-                    // Sử dụng MIME type thực tế của mediaRecorder để đóng gói blob chính xác
                     const actualMimeType = mediaRecorder.mimeType || mimeType || 'audio/webm';
                     const audioBlob = new Blob(audioChunks, { type: actualMimeType });
                     
-                    // Giải phóng URL cũ để tối ưu bộ nhớ
                     if (currentAudioUrl) {
                         URL.revokeObjectURL(currentAudioUrl);
                     }
@@ -117,18 +236,20 @@
                     currentAudioUrl = URL.createObjectURL(audioBlob);
                     audioPlayback.src = currentAudioUrl;
                     
-                    // Phát lại âm thanh (đã được unlock trước đó từ sự kiện touch/click)
-                    audioPlayback.play().catch(err => {
-                        console.error('Lỗi phát âm thanh:', err);
-                        status.textContent = 'Lỗi phát âm thanh. Vui lòng thử lại!';
+                    // Hiển thị nút phát lại
+                    playBtn.classList.add('visible');
+
+                    // Thử tự động phát lại âm thanh
+                    audioPlayback.play().then(() => {
+                        updatePlayBtnState(true);
+                    }).catch(err => {
+                        // iOS Safari sẽ chặn tự động phát ở các lần tiếp theo -> hiển thị trạng thái sẵn sàng phát lại thủ công
+                        console.log('Autoplay blocked (normal on iOS), waiting for user to click Play.');
+                        updatePlayBtnState(false);
+                        status.textContent = '🎙️ Đã ghi âm xong! Nhấn "Nghe lại" ở dưới.';
                     });
 
-                    status.textContent = '🎧 Đang phát lại...';
                     audioChunks = []; // Làm sạch buffer
-
-                    audioPlayback.onended = () => {
-                        status.textContent = 'Sẵn sàng! Nhấn giữ nút để tiếp tục.';
-                    };
                 };
             })
             .catch(err => {
@@ -136,25 +257,66 @@
                 status.textContent = 'Lỗi cấp quyền Micro. Hãy tải lại trang và cho phép.';
             });
 
+        // Hàm cập nhật giao diện của nút Nghe lại / Tạm dừng
+        const updatePlayBtnState = (isPlaying) => {
+            if (isPlaying) {
+                playBtn.innerHTML = '<span>⏸</span> Tạm dừng';
+                playBtn.style.backgroundColor = '#ff9500'; // Đổi sang màu cam khi đang phát
+                playBtn.style.boxShadow = '0 8px 16px rgba(255, 149, 0, 0.35)';
+                status.textContent = '🎧 Đang phát lại...';
+            } else {
+                playBtn.innerHTML = '<span>▶</span> Nghe lại';
+                playBtn.style.backgroundColor = '#34c759'; // Đổi lại màu xanh lá khi dừng
+                playBtn.style.boxShadow = '0 8px 16px rgba(52, 199, 89, 0.35)';
+                status.textContent = 'Sẵn sàng! Nhấn giữ nút màu xanh để ghi âm mới.';
+            }
+        };
+
+        // Xử lý sự kiện nhấn nút Nghe lại
+        playBtn.addEventListener('click', () => {
+            unlockAudio(); // Đảm bảo âm thanh được unlock khi click trực tiếp
+            if (audioPlayback.paused) {
+                audioPlayback.play().then(() => {
+                    updatePlayBtnState(true);
+                }).catch(err => {
+                    console.error('Lỗi khi phát lại:', err);
+                    status.textContent = 'Lỗi phát âm thanh. Vui lòng thử lại!';
+                });
+            } else {
+                audioPlayback.pause();
+                updatePlayBtnState(false);
+            }
+        });
+
+        audioPlayback.onended = () => {
+            updatePlayBtnState(false);
+        };
+
         // Xử lý sự kiện nhấn giữ (hỗ trợ cả trackpad trên Mac và cảm ứng trên iPhone)
         const startRecording = (e) => {
             e.preventDefault();
-            unlockAudio(); // Mở khóa âm thanh ngay khi người dùng chạm/nhấn nút
+            unlockAudio(); // Mở khóa âm thanh ngay khi chạm/nhấn nút
+            
+            // Ẩn nút phát lại cũ khi bắt đầu thu âm mới
+            playBtn.classList.remove('visible');
             
             if (mediaRecorder && mediaRecorder.state === 'inactive') {
                 mediaRecorder.start();
+                wave.classList.add('active'); // Kích hoạt hiệu ứng sóng âm hoạt họa
                 status.textContent = '🎙️ Đang ghi âm... (Thả ra để nghe)';
                 recordBtn.style.backgroundColor = '#ff3b30';
-                audioPlayback.pause(); // Dừng phát nếu đang nghe dở câu cũ
+                audioPlayback.pause();
+                updatePlayBtnState(false);
             }
         };
 
         const stopRecording = (e) => {
             e.preventDefault();
-            unlockAudio(); // Đảm bảo âm thanh được mở khóa khi thả tay
+            unlockAudio();
             
             if (mediaRecorder && mediaRecorder.state === 'recording') {
                 mediaRecorder.stop();
+                wave.classList.remove('active'); // Tắt sóng âm hoạt họa
                 recordBtn.style.backgroundColor = '#007aff';
             }
         };
