@@ -223,12 +223,15 @@
 
         logDebug("Ứng dụng bắt đầu.");
 
-        // Khởi tạo Micro một lần duy nhất khi load trang
+        // Yêu cầu quyền Micro lần đầu khi load trang
         navigator.mediaDevices.getUserMedia({ audio: true })
             .then(stream => {
-                mediaStream = stream;
                 status.textContent = 'Sẵn sàng! Nhấn giữ nút để bắt đầu.';
-                logDebug("Đã cấp quyền Micro thành công.");
+                logDebug("Đã cấp quyền Micro thành công lần đầu.");
+
+                // Giải phóng ngay micro ban đầu để tránh biểu tượng micro màu cam liên tục trên màn hình
+                stream.getTracks().forEach(track => track.stop());
+                logDebug("Đã tạm thời đóng micro để lấy quyền.");
 
                 // Kiểm tra thiết bị iOS/Safari để ưu tiên audio/mp4
                 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
@@ -316,61 +319,77 @@
             audioPlayback.pause();
             updatePlayBtnState(false);
             
-            if (mediaStream) {
-                audioChunks = []; // Reset dữ liệu đệm trước khi thu âm mới
-                
-                try {
-                    const options = mimeType ? { mimeType } : {};
-                    mediaRecorder = new MediaRecorder(mediaStream, options);
-                    logDebug(`Đã khởi tạo MediaRecorder mới.`);
+            status.textContent = '🎙️ Đang khởi động micro...';
+            
+            // YÊU CẦU MỘT LUỒNG MICRO MỚI CHO TỪNG PHIÊN GHI ÂM (Bí quyết sửa lỗi iOS Safari)
+            // Nhờ đó iOS không thể tự động tắt hay duck tiếng của stream cũ sau khi phát nhạc
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    mediaStream = stream;
+                    audioChunks = []; // Reset dữ liệu đệm trước khi thu âm mới
+                    logDebug("Đã kết nối luồng Micro mới.");
 
-                    mediaRecorder.ondataavailable = event => {
-                        if (event.data && event.data.size > 0) {
-                            audioChunks.push(event.data);
-                            logDebug(`Nhận chunk: ${event.data.size} bytes. Tổng chunks: ${audioChunks.length}`);
-                        }
-                    };
+                    try {
+                        const options = mimeType ? { mimeType } : {};
+                        mediaRecorder = new MediaRecorder(mediaStream, options);
+                        logDebug(`Đã khởi tạo MediaRecorder mới.`);
 
-                    mediaRecorder.onerror = event => {
-                        logDebug(`❌ Lỗi MediaRecorder: ${event.error.name} - ${event.error.message}`);
-                    };
+                        mediaRecorder.ondataavailable = event => {
+                            if (event.data && event.data.size > 0) {
+                                audioChunks.push(event.data);
+                                logDebug(`Nhận chunk: ${event.data.size} bytes. Tổng chunks: ${audioChunks.length}`);
+                            }
+                        };
 
-                    mediaRecorder.onstop = () => {
-                        logDebug(`MediaRecorder đã dừng. Tổng số chunks: ${audioChunks.length}`);
-                        const actualMimeType = mediaRecorder.mimeType || mimeType || 'audio/mp4';
-                        
-                        try {
-                            const audioBlob = new Blob(audioChunks, { type: actualMimeType });
-                            logDebug(`Đã tạo Blob thành công. Kích thước: ${audioBlob.size} bytes. Kiểu: ${audioBlob.type}`);
+                        mediaRecorder.onerror = event => {
+                            logDebug(`❌ Lỗi MediaRecorder: ${event.error.name} - ${event.error.message}`);
+                        };
+
+                        mediaRecorder.onstop = () => {
+                            logDebug(`MediaRecorder đã dừng. Tổng số chunks: ${audioChunks.length}`);
+                            const actualMimeType = mediaRecorder.mimeType || mimeType || 'audio/mp4';
                             
-                            if (currentAudioUrl) {
-                                URL.revokeObjectURL(currentAudioUrl);
+                            // ĐÓNG HOÀN TOÀN luồng micro ngay sau khi ghi âm xong
+                            // Để thiết bị iOS giải phóng hẳn phần cứng micro, sẵn sàng cho việc phát lại qua loa
+                            if (mediaStream) {
+                                mediaStream.getTracks().forEach(track => track.stop());
+                                logDebug("Đã giải phóng micro.");
                             }
 
-                            currentAudioUrl = URL.createObjectURL(audioBlob);
-                            audioPlayback.src = currentAudioUrl;
-                            logDebug(`Đã gán src thành công: ${currentAudioUrl.substring(0, 45)}...`);
-                            
-                            // Hiển thị nút phát lại
-                            playBtn.classList.add('visible');
-                            updatePlayBtnState(false);
-                            status.textContent = '🎙️ Đã ghi âm xong! Nhấn "Nghe lại" ở dưới.';
-                        } catch (blobErr) {
-                            logDebug(`❌ Lỗi tạo Blob/URL: ${blobErr.name} - ${blobErr.message}`);
-                        }
-                    };
+                            try {
+                                const audioBlob = new Blob(audioChunks, { type: actualMimeType });
+                                logDebug(`Đã tạo Blob thành công. Kích thước: ${audioBlob.size} bytes. Kiểu: ${audioBlob.type}`);
+                                
+                                if (currentAudioUrl) {
+                                    URL.revokeObjectURL(currentAudioUrl);
+                                }
 
-                    mediaRecorder.start();
-                    wave.classList.add('active'); // Kích hoạt hiệu ứng sóng âm hoạt họa
-                    status.textContent = '🎙️ Đang ghi âm... (Thả ra để lưu)';
-                    recordBtn.style.backgroundColor = '#ff3b30';
-                    logDebug("MediaRecorder.start() thành công.");
-                } catch (recErr) {
-                    logDebug(`❌ Lỗi khi khởi động MediaRecorder: ${recErr.name} - ${recErr.message}`);
-                }
-            } else {
-                logDebug("❌ Không thể ghi âm: mediaStream chưa sẵn sàng.");
-            }
+                                currentAudioUrl = URL.createObjectURL(audioBlob);
+                                audioPlayback.src = currentAudioUrl;
+                                logDebug(`Đã gán src thành công: ${currentAudioUrl.substring(0, 45)}...`);
+                                
+                                // Hiển thị nút phát lại
+                                playBtn.classList.add('visible');
+                                updatePlayBtnState(false);
+                                status.textContent = '🎙️ Đã ghi âm xong! Nhấn "Nghe lại" ở dưới.';
+                            } catch (blobErr) {
+                                logDebug(`❌ Lỗi tạo Blob/URL: ${blobErr.name} - ${blobErr.message}`);
+                            }
+                        };
+
+                        mediaRecorder.start();
+                        wave.classList.add('active'); // Kích hoạt hiệu ứng sóng âm hoạt họa
+                        status.textContent = '🎙️ Đang ghi âm... (Thả ra để lưu)';
+                        recordBtn.style.backgroundColor = '#ff3b30';
+                        logDebug("MediaRecorder.start() thành công.");
+                    } catch (recErr) {
+                        logDebug(`❌ Lỗi khi khởi động MediaRecorder: ${recErr.name} - ${recErr.message}`);
+                    }
+                })
+                .catch(err => {
+                    logDebug(`❌ Lỗi kết nối Micro: ${err.name} - ${err.message}`);
+                    status.textContent = 'Không thể mở micro. Vui lòng thử lại!';
+                });
         };
 
         const stopRecording = (e) => {
