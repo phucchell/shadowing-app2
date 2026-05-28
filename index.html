@@ -174,26 +174,12 @@
         let mediaRecorder;
         let audioChunks = [];
         let currentAudioUrl = null;
-        let audioUnlocked = false;
 
         const recordBtn = document.getElementById('recordBtn');
         const playBtn = document.getElementById('playBtn');
         const status = document.getElementById('status');
         const audioPlayback = document.getElementById('audioPlayback');
         const wave = document.getElementById('wave');
-
-        // Hàm kích hoạt (unlock) âm thanh trên iOS Safari bằng âm thanh tĩnh base64 cực ngắn
-        const unlockAudio = () => {
-            if (audioUnlocked) return;
-            audioPlayback.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
-            audioPlayback.play().then(() => {
-                audioPlayback.pause();
-                audioUnlocked = true;
-                console.log('Audio unlocked successfully.');
-            }).catch(err => {
-                console.log('Audio unlock check:', err);
-            });
-        };
 
         // Khởi tạo Micro
         navigator.mediaDevices.getUserMedia({ audio: true })
@@ -236,18 +222,10 @@
                     currentAudioUrl = URL.createObjectURL(audioBlob);
                     audioPlayback.src = currentAudioUrl;
                     
-                    // Hiển thị nút phát lại
+                    // Hiển thị nút phát lại và cập nhật trạng thái
                     playBtn.classList.add('visible');
-
-                    // Thử tự động phát lại âm thanh
-                    audioPlayback.play().then(() => {
-                        updatePlayBtnState(true);
-                    }).catch(err => {
-                        // iOS Safari sẽ chặn tự động phát ở các lần tiếp theo -> hiển thị trạng thái sẵn sàng phát lại thủ công
-                        console.log('Autoplay blocked (normal on iOS), waiting for user to click Play.');
-                        updatePlayBtnState(false);
-                        status.textContent = '🎙️ Đã ghi âm xong! Nhấn "Nghe lại" ở dưới.';
-                    });
+                    updatePlayBtnState(false);
+                    status.textContent = '🎙️ Đã ghi âm xong! Nhấn "Nghe lại" ở dưới.';
 
                     audioChunks = []; // Làm sạch buffer
                 };
@@ -268,13 +246,12 @@
                 playBtn.innerHTML = '<span>▶</span> Nghe lại';
                 playBtn.style.backgroundColor = '#34c759'; // Đổi lại màu xanh lá khi dừng
                 playBtn.style.boxShadow = '0 8px 16px rgba(52, 199, 89, 0.35)';
-                status.textContent = 'Sẵn sàng! Nhấn giữ nút màu xanh để ghi âm mới.';
+                status.textContent = 'Sẵn sàng! Nhấn giữ nút xanh dương để ghi âm mới.';
             }
         };
 
-        // Xử lý sự kiện nhấn nút Nghe lại
+        // Xử lý sự kiện nhấn nút Nghe lại (Được coi là cử chỉ người dùng trực tiếp -> 100% hoạt động trên iOS)
         playBtn.addEventListener('click', () => {
-            unlockAudio(); // Đảm bảo âm thanh được unlock khi click trực tiếp
             if (audioPlayback.paused) {
                 audioPlayback.play().then(() => {
                     updatePlayBtnState(true);
@@ -295,7 +272,6 @@
         // Xử lý sự kiện nhấn giữ (hỗ trợ cả trackpad trên Mac và cảm ứng trên iPhone)
         const startRecording = (e) => {
             e.preventDefault();
-            unlockAudio(); // Mở khóa âm thanh ngay khi chạm/nhấn nút
             
             // Ẩn nút phát lại cũ khi bắt đầu thu âm mới
             playBtn.classList.remove('visible');
@@ -303,7 +279,7 @@
             if (mediaRecorder && mediaRecorder.state === 'inactive') {
                 mediaRecorder.start();
                 wave.classList.add('active'); // Kích hoạt hiệu ứng sóng âm hoạt họa
-                status.textContent = '🎙️ Đang ghi âm... (Thả ra để nghe)';
+                status.textContent = '🎙️ Đang ghi âm... (Thả ra để lưu)';
                 recordBtn.style.backgroundColor = '#ff3b30';
                 audioPlayback.pause();
                 updatePlayBtnState(false);
@@ -312,12 +288,12 @@
 
         const stopRecording = (e) => {
             e.preventDefault();
-            unlockAudio();
             
             if (mediaRecorder && mediaRecorder.state === 'recording') {
                 mediaRecorder.stop();
                 wave.classList.remove('active'); // Tắt sóng âm hoạt họa
                 recordBtn.style.backgroundColor = '#007aff';
+                status.textContent = '⌛ Đang xử lý âm thanh...';
             }
         };
 
