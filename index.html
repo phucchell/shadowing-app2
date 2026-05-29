@@ -49,7 +49,7 @@
             outline: none;
         }
 
-        #recordBtn:active {
+        #recordBtn:active, #recordBtn.active {
             background-color: #ff3b30;
             box-shadow: 0 6px 16px rgba(255, 59, 48, 0.4);
             transform: scale(0.96);
@@ -313,6 +313,7 @@
         const startRecording = (e) => {
             e.preventDefault();
             logDebug("Bắt đầu nhấn giữ ghi âm.");
+            recordBtn.classList.add('active');
             
             // Ẩn nút phát lại cũ khi bắt đầu thu âm mới
             playBtn.classList.remove('visible');
@@ -380,7 +381,6 @@
                         mediaRecorder.start();
                         wave.classList.add('active'); // Kích hoạt hiệu ứng sóng âm hoạt họa
                         status.textContent = '🎙️ Đang ghi âm... (Thả ra để lưu)';
-                        recordBtn.style.backgroundColor = '#ff3b30';
                         logDebug("MediaRecorder.start() thành công.");
                     } catch (recErr) {
                         logDebug(`❌ Lỗi khi khởi động MediaRecorder: ${recErr.name} - ${recErr.message}`);
@@ -389,6 +389,7 @@
                 .catch(err => {
                     logDebug(`❌ Lỗi kết nối Micro: ${err.name} - ${err.message}`);
                     status.textContent = 'Không thể mở micro. Vui lòng thử lại!';
+                    recordBtn.classList.remove('active');
                 });
         };
 
@@ -397,7 +398,7 @@
             logDebug("Đã thả tay ra khỏi nút ghi âm. Sẽ dừng sau 500ms...");
             
             // Cập nhật giao diện nút ngay lập tức để tạo cảm giác phản hồi nhanh
-            recordBtn.style.backgroundColor = '#007aff';
+            recordBtn.classList.remove('active');
             wave.classList.remove('active'); // Tắt sóng âm hoạt họa
             status.textContent = '⌛ Đang hoàn tất ghi âm...';
 
@@ -420,6 +421,44 @@
         recordBtn.addEventListener('mouseup', stopRecording);
         recordBtn.addEventListener('touchstart', startRecording, { passive: false });
         recordBtn.addEventListener('touchend', stopRecording, { passive: false });
+
+        // Xử lý sự kiện bàn phím: Giữ Space để ghi âm, nhấn F để nghe lại
+        let isSpacePressed = false;
+
+        window.addEventListener('keydown', (e) => {
+            // Chỉ kích hoạt phím tắt nếu người dùng không gõ chữ trong các ô nhập liệu
+            if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') {
+                return;
+            }
+
+            // Giữ Space để ghi âm
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (!isSpacePressed) {
+                    isSpacePressed = true;
+                    logDebug("Keyboard: Nhấn giữ Space để ghi âm.");
+                    startRecording(e);
+                }
+            }
+            
+            // Nhấn phím F để nghe lại hoặc tạm dừng
+            if (e.key === 'f' || e.key === 'F') {
+                e.preventDefault();
+                logDebug("Keyboard: Nhấn phím F để nghe lại.");
+                playBtn.click(); // Mô phỏng nhấn nút Phát lại
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.code === 'Space') {
+                if (isSpacePressed) {
+                    e.preventDefault();
+                    isSpacePressed = false;
+                    logDebug("Keyboard: Thả Space để dừng ghi âm.");
+                    stopRecording(e);
+                }
+            }
+        });
     </script>
 </body>
 
