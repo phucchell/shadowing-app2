@@ -1,1297 +1,465 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="vi">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GitHub Copilot (GH-300) Practice Exam Engine</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-                    },
-                    colors: {
-                        github: {
-                            dark: '#0d1117',
-                            darker: '#161b22',
-                            border: '#30363d',
-                            accent: '#2f81f7',
-                            text: '#c9d1d9',
-                            muted: '#8b949e',
-                            green: '#2ea44f',
-                            red: '#da3637',
-                            yellow: '#db6d28'
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-    <!-- Google Font Inter -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <title>Repeat Recorder</title>
     <style>
         body {
-            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            background: linear-gradient(135deg, #f2f2f7 0%, #e5e5ea 100%);
         }
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
+
+        .card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 28px;
+            padding: 30px 24px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.02);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 320px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            text-align: center;
+            transition: all 0.3s ease;
         }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: transparent;
+
+        #recordBtn {
+            padding: 24px 48px;
+            font-size: 20px;
+            font-weight: 700;
+            border-radius: 50px;
+            border: none;
+            background-color: #007aff;
+            color: white;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+            box-shadow: 0 10px 24px rgba(0, 122, 255, 0.35);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            outline: none;
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #484f58;
-            border-radius: 4px;
+
+        #recordBtn:active, #recordBtn.active {
+            background-color: #ff3b30;
+            box-shadow: 0 6px 16px rgba(255, 59, 48, 0.4);
+            transform: scale(0.96);
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #8b949e;
+
+        #status {
+            margin-top: 24px;
+            font-size: 15px;
+            color: #555;
+            font-weight: 600;
+            line-height: 1.4;
+            min-height: 42px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 10px;
+            width: 100%;
+            word-break: break-word;
+        }
+
+        #playBtn {
+            padding: 0;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 50px;
+            border: none;
+            background-color: #34c759;
+            color: white;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+            box-shadow: 0 8px 16px rgba(52, 199, 89, 0.35);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            opacity: 0;
+            transform: scale(0.8);
+            pointer-events: none;
+            height: 0;
+            overflow: hidden;
+            margin-top: 0;
+        }
+
+        #playBtn.visible {
+            opacity: 1;
+            transform: scale(1);
+            pointer-events: auto;
+            height: auto;
+            padding: 16px 32px;
+            margin-top: 10px;
+        }
+
+        #playBtn:active {
+            transform: scale(0.95);
+            box-shadow: 0 4px 8px rgba(52, 199, 89, 0.2);
+        }
+
+        /* Hiệu ứng sóng âm khi ghi âm */
+        .recording-wave {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            height: 30px;
+            margin-top: 20px;
+            opacity: 0;
+            transition: all 0.3s ease;
+            transform: scale(0.8);
+        }
+
+        .recording-wave.active {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .bar {
+            width: 4px;
+            height: 8px;
+            background-color: #ff3b30;
+            border-radius: 2px;
+            animation: pulse 0.8s ease-in-out infinite;
+        }
+
+        .bar:nth-child(1) { animation-delay: 0.1s; }
+        .bar:nth-child(2) { animation-delay: 0.2s; }
+        .bar:nth-child(3) { animation-delay: 0.3s; }
+        .bar:nth-child(4) { animation-delay: 0.4s; }
+        .bar:nth-child(5) { animation-delay: 0.5s; }
+
+        @keyframes pulse {
+            0%, 100% { height: 8px; }
+            50% { height: 28px; }
+        }
+
+        /* Khung Debug hiển thị lỗi và trạng thái trực tiếp trên màn hình */
+        #debug {
+            margin-top: 20px;
+            font-family: monospace;
+            font-size: 10px;
+            color: #555;
+            text-align: left;
+            width: 100%;
+            border-top: 1px dashed #ccc;
+            padding-top: 10px;
+            word-break: break-all;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 8px;
+            max-height: 120px;
+            overflow-y: auto;
+            box-sizing: border-box;
         }
     </style>
 </head>
-<body class="bg-slate-50 dark:bg-[#0d1117] text-slate-800 dark:text-[#c9d1d9] min-h-screen transition-colors duration-200">
 
-    <!-- Top Navigation Header -->
-    <header class="border-b border-slate-200 dark:border-[#30363d] bg-white dark:bg-[#161b22] sticky top-0 z-40">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <!-- GitHub Icon Styled SVG -->
-                <svg class="w-8 h-8 text-indigo-600 dark:text-sky-500" viewBox="0 0 16 16" width="32" height="32" fill="currentColor">
-                    <path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.3-1.37-.62-1.6 1.99-.22 4.07-.98 4.07-4.43 0-.98-.35-1.78-.92-2.41.09-.23.4-.1.39-1.2 0-.01-.73-.24-2.4 1.15-.69-.19-1.43-.28-2.17-.28-.74 0-1.48.09-2.17.28-1.67-1.39-2.4-1.15-2.4-1.15-.01.1-.09.97.31 1.2a3.86 3.86 0 0 0-.91 2.41c0 3.44 2.07 4.2 4.06 4.42-.26.23-.51.69-.58 1.34-.52.24-1.85.64-2.67-.76-.15-.26-.41-.43-.72-.47-.32-.04-.04.2.16.32.18.09.31.25.43.43.18.42.51.84.88.94.31.08.62.06.94-.01.01.44.01.86.01.99 0 .21-.15.46-.55.38A8.013 8.013 0 0 1 0 8c0-4.42 3.58-8 8-8z"></path>
-                </svg>
-                <div>
-                    <h1 class="font-bold text-lg leading-tight tracking-tight flex items-center gap-2">
-                        GH-300 <span class="text-xs bg-indigo-100 text-indigo-800 dark:bg-sky-500/10 dark:text-sky-400 border border-indigo-200 dark:border-sky-500/20 px-2 py-0.5 rounded-full font-semibold">CO-PILOT CERTIFICATION</span>
-                    </h1>
-                    <p class="text-xs text-slate-500 dark:text-[#8b949e]">New Practice Exam Simulator • 117 Questions Total</p>
-                </div>
-            </div>
-            
-            <div class="flex items-center space-x-3">
-                <!-- Theme Toggle Button -->
-                <button id="themeToggle" class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-[#30363d] text-slate-600 dark:text-[#8b949e] border border-slate-200 dark:border-[#30363d] transition-colors">
-                    <!-- Sun Icon (Light Mode) -->
-                    <svg id="sunIcon" class="hidden w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707.707M12 8a4 4 0 100 8 4 4 0 000-8z"></path></svg>
-                    <!-- Moon Icon (Dark Mode) -->
-                    <svg id="moonIcon" class="hidden w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
-                </button>
-
-                <!-- State Controller buttons -->
-                <button id="resetSessionBtn" class="px-3 py-1.5 text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 border border-slate-200 dark:border-[#30363d] rounded-lg transition-colors font-medium">
-                    Xóa lưu trữ
-                </button>
-            </div>
+<body>
+    <div class="card">
+        <h1 style="margin: 0 0 5px 0; font-size: 24px; color: #1c1c1e; font-weight: 700;">Repeat Recorder</h1>
+        <p style="margin: 0 0 25px 0; font-size: 13px; color: #8e8e93; font-weight: 500; letter-spacing: 0.3px;">Shadowing & Phát âm</p>
+        
+        <button id="recordBtn">Nhấn giữ để nói</button>
+        
+        <div class="recording-wave" id="wave">
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
+            <div class="bar"></div>
         </div>
-    </header>
 
-    <!-- Main Content Container -->
-    <main id="appContainer" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div id="status">Đang đợi cấp quyền micro...</div>
         
-        <!-- WELCOME / SETUP SCREEN -->
-        <section id="setupScreen" class="block max-w-2xl mx-auto bg-white dark:bg-[#161b22] border border-slate-200 dark:border-[#30363d] rounded-xl p-6 sm:p-8 shadow-sm">
-            <h2 class="text-2xl font-bold mb-6 text-center text-slate-900 dark:text-white flex items-center justify-center gap-2">
-                🎓 Cài đặt Bài Thi Thử GH-300
-            </h2>
-            
-            <form id="setupForm" class="space-y-6">
-                <!-- Select Sets -->
-                <div class="space-y-3">
-                    <label class="block text-sm font-semibold text-slate-700 dark:text-[#c9d1d9]">1. Chọn các bộ câu hỏi:</label>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <label class="flex flex-col p-3 border border-slate-200 dark:border-[#30363d] rounded-lg bg-slate-50 dark:bg-[#0d1117] cursor-pointer hover:border-indigo-500 dark:hover:border-sky-500 transition-colors">
-                            <div class="flex items-center space-x-2">
-                                <input type="checkbox" name="sets" value="set4" checked class="w-4 h-4 rounded text-indigo-600 dark:text-sky-500 focus:ring-indigo-500">
-                                <span class="font-semibold text-sm">Set 4 (Part 1 - 60Q)</span>
-                            </div>
-                            <span class="text-xs text-slate-400 mt-1 dark:text-[#8b949e]">Câu hỏi 1 - 60</span>
-                        </label>
-                        <label class="flex flex-col p-3 border border-slate-200 dark:border-[#30363d] rounded-lg bg-slate-50 dark:bg-[#0d1117] cursor-pointer hover:border-indigo-500 dark:hover:border-sky-500 transition-colors">
-                            <div class="flex items-center space-x-2">
-                                <input type="checkbox" name="sets" value="set5" checked class="w-4 h-4 rounded text-indigo-600 dark:text-sky-500 focus:ring-indigo-500">
-                                <span class="font-semibold text-sm">Set 5 (Part 2 - 57Q)</span>
-                            </div>
-                            <span class="text-xs text-slate-400 mt-1 dark:text-[#8b949e]">Câu hỏi 61 - 117</span>
-                        </label>
-                    </div>
-                </div>
+        <button id="playBtn">
+            <span>▶</span> Nghe lại
+        </button>
 
-                <!-- Mode Selection -->
-                <div class="space-y-3">
-                    <label class="block text-sm font-semibold text-slate-700 dark:text-[#c9d1d9]">2. Chế độ luyện tập:</label>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <label class="flex items-start p-4 border border-slate-200 dark:border-[#30363d] rounded-lg bg-slate-50 dark:bg-[#0d1117] cursor-pointer hover:border-indigo-500 dark:hover:border-sky-500 transition-colors">
-                            <input type="radio" name="mode" value="practice" checked class="mt-1 w-4 h-4 text-indigo-600 dark:text-sky-500 focus:ring-indigo-500">
-                            <div class="ml-3">
-                                <span class="block font-semibold text-sm">Luyện tập (Practice Mode)</span>
-                                <span class="block text-xs text-slate-500 dark:text-[#8b949e] mt-1">Xem câu trả lời đúng và giải thích rationale ngay lập tức sau mỗi câu hỏi.</span>
-                            </div>
-                        </label>
-                        <label class="flex items-start p-4 border border-slate-200 dark:border-[#30363d] rounded-lg bg-slate-50 dark:bg-[#0d1117] cursor-pointer hover:border-indigo-500 dark:hover:border-sky-500 transition-colors">
-                            <input type="radio" name="mode" value="exam" class="mt-1 w-4 h-4 text-indigo-600 dark:text-sky-500 focus:ring-indigo-500">
-                            <div class="ml-3">
-                                <span class="block font-semibold text-sm">Mô phỏng thi (Exam Mode)</span>
-                                <span class="block text-xs text-slate-500 dark:text-[#8b949e] mt-1">Làm bài với đồng hồ đếm ngược 100 phút. Chỉ xem kết quả và giải thích sau khi Submit.</span>
-                            </div>
-                        </label>
-                    </div>
-                </div>
+        <div id="debug">Đang khởi tạo hệ thống debug...</div>
+    </div>
 
-                <!-- Additional Options -->
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 border-t border-slate-100 dark:border-[#30363d] pt-4">
-                    <div class="space-y-2">
-                        <label class="block text-xs font-semibold text-slate-500 dark:text-[#8b949e]">Xáo trộn thứ tự câu:</label>
-                        <div class="flex items-center">
-                            <input type="checkbox" id="shuffleQuestions" class="w-4 h-4 text-indigo-600 dark:text-sky-500 rounded border-slate-300">
-                            <label for="shuffleQuestions" class="ml-2 text-sm">Có, xáo trộn</label>
-                        </div>
-                    </div>
-                    <div class="space-y-2">
-                        <label class="block text-xs font-semibold text-slate-500 dark:text-[#8b949e]">Xáo trộn đáp án:</label>
-                        <div class="flex items-center">
-                            <input type="checkbox" id="shuffleOptions" class="w-4 h-4 text-indigo-600 dark:text-sky-500 rounded border-slate-300">
-                            <label for="shuffleOptions" class="ml-2 text-sm">Có, xáo trộn</label>
-                        </div>
-                    </div>
-                    <div class="space-y-2">
-                        <label class="block text-xs font-semibold text-slate-500 dark:text-[#8b949e]">Giới hạn câu hỏi:</label>
-                        <select id="questionLimit" class="w-full text-sm bg-slate-50 dark:bg-[#0d1117] border border-slate-300 dark:border-[#30363d] rounded p-1">
-                            <option value="all">Tất cả câu hỏi</option>
-                            <option value="10">10 câu hỏi</option>
-                            <option value="20">20 câu hỏi</option>
-                            <option value="30">30 câu hỏi</option>
-                            <option value="60">60 câu hỏi</option>
-                            <option value="100">100 câu hỏi</option>
-                        </select>
-                    </div>
-                </div>
+    <audio id="audioPlayback" hidden></audio>
 
-                <!-- Submit Button -->
-                <button type="submit" class="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 dark:bg-sky-500 dark:hover:bg-sky-600 text-white font-bold rounded-lg shadow-sm transition-colors text-center cursor-pointer">
-                    Bắt đầu Luyện tập / Làm bài thi
-                </button>
-            </form>
-        </section>
-
-        <!-- ACTIVE EXAM PANEL -->
-        <section id="examPanel" class="hidden grid grid-cols-1 lg:grid-cols-4 gap-6">
-            
-            <!-- LEFT PANEL: Active Question (span 3 of 4) -->
-            <div class="lg:col-span-3 space-y-6">
-                <!-- Status & Progress Indicator -->
-                <div class="bg-white dark:bg-[#161b22] border border-slate-200 dark:border-[#30363d] rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
-                    <div class="flex items-center space-x-3 w-full sm:w-auto">
-                        <span id="activeSetBadge" class="text-xs bg-indigo-100 text-indigo-800 dark:bg-indigo-500/10 dark:text-indigo-400 font-bold px-2.5 py-1 rounded">SET 1</span>
-                        <span class="text-sm font-semibold">
-                            Câu hỏi <span id="currentQuestionNum">1</span> / <span id="totalQuestionsNum">180</span>
-                        </span>
-                    </div>
-                    
-                    <!-- Progress bar -->
-                    <div class="w-full sm:w-1/3 bg-slate-200 dark:bg-[#30363d] h-2 rounded-full overflow-hidden">
-                        <div id="progressBar" class="bg-indigo-600 dark:bg-sky-500 h-full w-[1%]" style="transition: width 0.3s ease;"></div>
-                    </div>
-
-                    <!-- Timer and Marks info -->
-                    <div class="flex items-center space-x-4">
-                        <div id="markForReviewBtn" class="flex items-center space-x-1.5 cursor-pointer text-xs text-yellow-600 hover:underline">
-                            <svg class="w-4 h-4 fill-none stroke-current" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path></svg>
-                            <span id="markReviewText">Đánh dấu xem lại</span>
-                        </div>
-                        
-                        <div id="examTimerContainer" class="flex items-center space-x-1.5 font-mono text-sm border border-slate-200 dark:border-[#30363d] px-3 py-1 rounded bg-slate-50 dark:bg-[#0d1117] font-bold">
-                            <!-- Clock Icon -->
-                            <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-12 0 9 9 0 0112 0z"></path></svg>
-                            <span id="examTimer">100:00</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Key Instructions / Banner -->
-                <div id="multiAnswerAlert" class="hidden p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/30 text-blue-800 dark:text-blue-300 text-xs rounded-lg flex items-center gap-2">
-                    <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    <span><strong>Lưu ý:</strong> Câu hỏi này chứa nhiều đáp án đúng. Vui lòng chọn tất cả các đáp án áp dụng.</span>
-                </div>
-
-                <!-- Question Main Card -->
-                <div class="bg-white dark:bg-[#161b22] border border-slate-200 dark:border-[#30363d] rounded-xl p-6 sm:p-8 shadow-sm space-y-6">
-                    <!-- Question Prompt -->
-                    <div class="space-y-4">
-                        <div id="originalQuestionNum" class="text-xs text-rose-500 dark:text-rose-400 font-semibold tracking-wider h-5 flex items-center">Gốc: Câu 23</div>
-                        <h3 id="questionText" class="text-base sm:text-lg font-bold leading-relaxed text-slate-900 dark:text-white white-space-pre-line">
-                            Đang tải câu hỏi...
-                        </h3>
-                    </div>
-
-                    <!-- Options Container -->
-                    <div id="optionsList" class="space-y-3">
-                        <!-- Instantly Render Options -->
-                    </div>
-
-                    <!-- Practice Mode: Check Answer & explanation container -->
-                    <div id="checkAnswerContainer" class="flex flex-col space-y-4 pt-4 border-t border-slate-100 dark:border-[#30363d]">
-                        <div class="flex items-center space-x-2">
-                            <button id="checkAnswerBtn" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-sky-500 dark:hover:bg-sky-600 text-white font-semibold rounded-lg text-sm transition-colors shadow-sm scroll-smooth">
-                                Kiểm tra đáp án
-                            </button>
-                            <button id="showExplanationDirectBtn" class="underline text-xs text-slate-500 dark:text-[#8b949e] hover:text-slate-700 dark:hover:text-[#c9d1d9]">
-                                Hiển thị Rationale
-                            </button>
-                        </div>
-
-                        <!-- Feedback Box (Hidden initially) -->
-                        <div id="feedbackBox" class="hidden p-4 rounded-xl border space-y-3">
-                            <div class="flex items-center space-x-2 text-sm font-bold" id="feedbackStatus">
-                                <!-- Pass/Fail indicator -->
-                            </div>
-                            <div class="text-sm dark:text-[#c9d1d9] leading-relaxed" id="feedbackExplanation">
-                                <!-- Explanation text -->
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Footer Navigation Buttons -->
-                <div class="flex items-center justify-between">
-                    <button id="prevBtn" class="px-4 py-2 text-sm bg-white dark:bg-[#161b22] border border-slate-200 dark:border-[#30363d] font-semibold rounded-lg hover:bg-slate-100 dark:hover:bg-[#30363d] text-slate-700 dark:text-[#c9d1d9] transition-colors flex items-center space-x-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"></path></svg>
-                        <span>Câu trước</span>
-                    </button>
-                    
-                    <div class="flex items-center space-x-2">
-                        <button id="submitExamBtn" class="hidden px-5 py-2 bg-rose-600 text-white hover:bg-rose-700 hover:shadow font-bold rounded-lg text-sm transition-all text-center">
-                            Nộp bài (Submit)
-                        </button>
-                        <button id="nextBtn" class="px-4 py-2 text-sm bg-white dark:bg-[#161b22] border border-slate-200 dark:border-[#30363d] font-semibold rounded-lg hover:bg-slate-100 dark:hover:bg-[#30363d] text-slate-700 dark:text-[#c9d1d9] transition-colors flex items-center space-x-2">
-                            <span>Câu tiếp</span>
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"></path></svg>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- RIGHT PANEL: Sidebar / Grid Navigation (span 1 of 4) -->
-            <div class="lg:col-span-1 space-y-6">
-                
-                <!-- Quick Search Panel -->
-                <div class="bg-white dark:bg-[#161b22] border border-slate-200 dark:border-[#30363d] rounded-xl p-4 shadow-sm">
-                    <h4 class="text-xs font-extrabold uppercase text-slate-500 tracking-wider mb-2">Tìm kiếm câu hỏi</h4>
-                    <div class="relative">
-                        <input type="text" id="searchBar" placeholder="Ví dụ: 'exclusion', 'agent'" class="w-full text-xs pl-8 pr-3 py-2 bg-slate-50 dark:bg-[#0d1117] border border-slate-300 dark:border-[#30363d] rounded-lg focus:ring-1 focus:ring-indigo-500 outline-none">
-                        <svg class="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                    </div>
-                </div>
-
-                <!-- Questions Overview Panel -->
-                <div class="bg-white dark:bg-[#161b22] border border-slate-200 dark:border-[#30363d] rounded-xl p-4 shadow-sm space-y-4">
-                    <div class="flex items-center justify-between border-b border-slate-100 dark:border-[#30363d] pb-2">
-                        <h4 class="text-xs font-extrabold uppercase text-slate-500 tracking-wider">Danh sách câu hỏi</h4>
-                        <span id="answeredStatusLabel" class="text-xs text-[#8b949e]">0/180 câu</span>
-                    </div>
-
-                    <!-- Grid of Question Nodes (Max height, scrollable) -->
-                    <div id="questionsGrid" class="grid grid-cols-5 gap-1.5 overflow-y-auto max-h-80 pr-1 custom-scrollbar">
-                        <!-- Questions nodes will render dynamically -->
-                    </div>
-
-                    <!-- Legend labels -->
-                    <div class="grid grid-cols-2 gap-2 pt-2 text-[10px] text-slate-500 dark:text-[#8b949e] border-t border-slate-100 dark:border-[#30363d]">
-                        <div class="flex items-center"><span class="w-2.5 h-2.5 bg-slate-200 dark:bg-[#30363d] border border-slate-300 dark:border-slate-600 rounded mr-1.5 block"></span> Trống</div>
-                        <div class="flex items-center"><span class="w-2.5 h-2.5 bg-slate-300 dark:bg-slate-500 rounded mr-1.5 block"></span> Đã chọn</div>
-                        <div class="flex items-center"><span class="w-2.5 h-2.5 bg-yellow-500 rounded mr-1.5 block"></span> Đánh dấu</div>
-                        <div class="flex items-center"><span class="w-2.5 h-2.5 bg-emerald-500 rounded mr-1.5 block"></span> Đúng (Practice)</div>
-                        <div class="flex items-center"><span class="w-2.5 h-2.5 bg-rose-500 rounded mr-1.5 block"></span> Sai (Practice)</div>
-                    </div>
-                </div>
-
-                <!-- Session management widget -->
-                <div class="bg-white dark:bg-[#161b22] border border-slate-200 dark:border-[#30363d] rounded-xl p-4 shadow-sm space-y-3">
-                    <p class="text-[11px] text-[#8b949e] leading-snug">Hệ thống tự động lưu trữ kết quả và câu đang học. Bạn có thể đóng trình duyệt và quay lại làm tiếp bất cứ lúc nào!</p>
-                    <button id="quitExamBtn" class="w-full py-2 bg-slate-100 dark:bg-[#30363d] hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-bold rounded-lg text-slate-700 dark:text-white transition-colors">
-                        Thoát ra Menu chính
-                    </button>
-                </div>
-            </div>
-        </section>
-
-        <!-- RESULTS / REPORT METRICS SCREEN -->
-        <section id="resultsScreen" class="hidden max-w-4xl mx-auto space-y-6">
-            
-            <!-- Result Overview Card -->
-            <div class="bg-white dark:bg-[#161b22] border border-slate-200 dark:border-[#30363d] rounded-xl p-6 sm:p-8 text-center space-y-6 shadow-sm">
-                <div class="max-w-xs mx-auto">
-                    <!-- Progress Radial/Gauge or Score Circle -->
-                    <div class="relative flex items-center justify-center p-6 bg-slate-50 dark:bg-[#0d1117] rounded-full border border-slate-100 dark:border-[#30363d]">
-                        <div>
-                            <span id="finalScorePercent" class="text-4xl sm:text-5xl font-extrabold text-indigo-600 dark:text-sky-500">75%</span>
-                            <span class="block text-slate-500 dark:text-[#8b949e] text-xs font-semibold mt-1">ĐIỂM SỐ ĐẠT ĐƯỢC</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Passing / Failing Badge -->
-                <div class="space-y-2">
-                    <div id="passBadge" class="inline-block px-4 py-1.5 rounded-full text-sm font-bold bg-emerald-100 dark:bg-emerald-500/10 text-emerald-800 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">
-                        🎉 ĐÃ ĐẠT ĐIỂM ĐỖ (PASS)
-                    </div>
-                    <div id="failBadge" class="inline-block px-4 py-1.5 rounded-full text-sm font-bold bg-rose-100 dark:bg-rose-500/10 text-rose-800 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20">
-                        ❌ CHƯA ĐẠT ĐIỂM ĐỖ (FAIL)
-                    </div>
-                    <p class="text-slate-500 dark:text-[#8b949e] text-sm max-w-md mx-auto" id="resultOverviewText">
-                        Bạn làm đúng 45 trên 60 câu hỏi. (Điểm đỗ là 70% trở lên).
-                    </p>
-                </div>
-
-                <!-- Stats grid -->
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 border-t border-b border-slate-100 dark:border-[#30363d] py-4 max-w-2xl mx-auto text-sm">
-                    <div>
-                        <span class="block text-xs font-semibold text-slate-400 uppercase">Đúng</span>
-                        <span class="text-lg font-bold text-emerald-500" id="statCorrect">45</span>
-                    </div>
-                    <div>
-                        <span class="block text-xs font-semibold text-slate-400 uppercase">Sai</span>
-                        <span class="text-lg font-bold text-rose-500" id="statIncorrect">15</span>
-                    </div>
-                    <div>
-                        <span class="block text-xs font-semibold text-slate-400 uppercase">Bỏ qua</span>
-                        <span class="text-lg font-bold text-slate-400" id="statUnanswered">0</span>
-                    </div>
-                    <div>
-                        <span class="block text-xs font-semibold text-slate-400 uppercase">Thời gian làm</span>
-                        <span class="text-lg font-bold text-slate-700 dark:text-white" id="statTimeSpent">45:12</span>
-                    </div>
-                </div>
-
-                <div class="flex justify-center space-x-3">
-                    <button id="retryExamBtn" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 dark:bg-sky-500 dark:hover:bg-sky-600 text-white font-bold rounded-lg text-sm shadow-sm transition-colors font-medium">
-                        Làm lại bộ này
-                    </button>
-                    <button id="goToSetupBtn" class="px-5 py-2.5 bg-slate-150 dark:bg-[#30363d] hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-white font-bold rounded-lg text-sm shadow-sm transition-colors font-medium">
-                        Chọn bộ câu khác
-                    </button>
-                </div>
-            </div>
-
-            <!-- Detailed Answers Review Header -->
-            <div class="space-y-4">
-                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white dark:bg-[#161b22] border border-slate-200 dark:border-[#30363d] p-4 rounded-xl shadow-sm">
-                    <h3 class="text-lg font-bold text-slate-900 dark:text-white">Xem lại chi tiết câu hỏi</h3>
-                    
-                    <!-- Filters bar -->
-                    <div class="flex flex-wrap gap-1 bg-slate-100 dark:bg-[#0d1117] p-1 rounded-lg text-xs" id="reviewFilters">
-                        <button data-filter="all" class="px-3 py-1.5 rounded-md font-semibold bg-white dark:bg-[#30363d] shadow-sm text-slate-800 dark:text-white">
-                            Tất cả (<span id="countReviewAll">180</span>)
-                        </button>
-                        <button data-filter="correct" class="px-3 py-1.5 rounded-md font-semibold text-slate-500 dark:text-[#8b949e]">
-                            Đúng (<span id="countReviewCorrect">45</span>)
-                        </button>
-                        <button data-filter="incorrect" class="px-3 py-1.5 rounded-md font-semibold text-slate-500 dark:text-[#8b949e]">
-                            Sai/Trống (<span id="countReviewIncorrect">15</span>)
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Review list of cards mapping target questions -->
-                <div id="reviewCardsContainer" class="space-y-4">
-                    <!-- Render review cards -->
-                </div>
-            </div>
-        </section>
-        
-    </main>
-
-    <!-- Embedded Exams JSON Block -->
-    <script id="examsData" type="application/json">
-        {"set4": [{"number": 1, "question": "What caution should developers exercise when using GitHub Copilot for assistance with mathematical computations?", "options": [{"letter": "A", "text": "GitHub Copilot’s capability to optimize complex mathematical algorithms beyond manual coding."}, {"letter": "B", "text": "GitHub Copilot’s ability to execute and verify mathematical results in real-time."}, {"letter": "C", "text": "GitHub Copilot’s automatic update of outdated mathematical formulas to modern standards."}, {"letter": "D", "text": "GitHub Copilot’s reliance on pattern-based responses without verifying computation accuracy."}], "is_multi": false, "answers": ["D"], "explanation": ""}, {"number": 2, "question": "In what ways can GitHub Copilot support a developer during the code refactoring process? Each correct answer presents part of the solution. (Choose two.)", "options": [{"letter": "A", "text": "By providing suggestions for improving code readability and maintainability based on best practices."}, {"letter": "B", "text": "By offering code transformation examples that enhance performance and reduce complexity."}, {"letter": "C", "text": "By independently ensuring compliance with regulatory standards across industries."}, {"letter": "D", "text": "By autonomously refactoring entire codebases to the latest programming language."}], "is_multi": true, "answers": ["A", "B"], "explanation": ""}, {"number": 3, "question": "What is a likely effect of GitHub Copilot being trained on commonly used code patterns?", "options": [{"letter": "A", "text": "Suggest completely novel projects, while reducing time on a project."}, {"letter": "B", "text": "Suggest innovative coding solutions that are not yet popular."}, {"letter": "C", "text": "Suggest homogeneous solutions if provided a diverse data set."}, {"letter": "D", "text": "Suggest code snippets that reflect the most common practices in the training data."}], "is_multi": false, "answers": ["D"], "explanation": ""}, {"number": 4, "question": "Where can you validate if GitHub Copilot is not returning suggestions because of content exclusions?", "options": [{"letter": "A", "text": "The GitHub Copilot errors panel in your IDE"}, {"letter": "B", "text": "The GitHub Copilot logs on GitHub.com under your user settings"}, {"letter": "C", "text": "The code suggestions window will display a warning message"}, {"letter": "D", "text": "The GitHub Copilot icon in the status bar of the editor will display a message"}], "is_multi": false, "answers": ["D"], "explanation": ""}, {"number": 5, "question": "Which Microsoft ethical AI principle is aimed at ensuring AI systems treat all people equally?", "options": [{"letter": "A", "text": "Privacy and Security"}, {"letter": "B", "text": "Fairness"}, {"letter": "C", "text": "Reliability and Safety"}, {"letter": "D", "text": "Inclusiveness"}], "is_multi": false, "answers": ["B"], "explanation": ""}, {"number": 6, "question": "What is zero-shot prompting?", "options": [{"letter": "A", "text": "Giving GitHub Copilot examples of the algorithm and outcome you want to use"}, {"letter": "B", "text": "Only giving GitHub Copilot a question as a prompt and no examples"}, {"letter": "C", "text": "Giving GitHub Copilot examples of the problem you want to solve"}, {"letter": "D", "text": "Giving as little context to GitHub Copilot as possible"}, {"letter": "E", "text": "Telling GitHub Copilot it needs to show only the correct answer"}], "is_multi": false, "answers": ["B"], "explanation": ""}, {"number": 7, "question": "What is the primary role of the ‘/optimize’ slash command in Visual Studio?", "options": [{"letter": "A", "text": "Translates code into a more performant language."}, {"letter": "B", "text": "Automatically formats the code according to the selected style guide."}, {"letter": "C", "text": "Summarizes your documentation into more maintainable and readable formats."}, {"letter": "D", "text": "Enhances the performance of the selected code by analyzing its runtime complexity."}], "is_multi": false, "answers": ["D"], "explanation": ""}, {"number": 8, "question": "When crafting prompts for GitHub Copilot, what is a recommended strategy to enhance the relevance of the generated code?", "options": [{"letter": "A", "text": "Keep the prompt as short as possible, using single words or brief phrases."}, {"letter": "B", "text": "Provide examples of expected input and output within the prompt."}, {"letter": "C", "text": "Avoid mentioning the programming language to allow for more flexible suggestions."}, {"letter": "D", "text": "Write the prompt in natural language without any programming language."}], "is_multi": false, "answers": ["B"], "explanation": ""}, {"number": 9, "question": "What is one of the recommended practices when using GitHub Copilot Chat to enhance code quality?", "options": [{"letter": "A", "text": "Rely solely on Copilot’s suggestions without reviewing them."}, {"letter": "B", "text": "Regularly review and refactor the code suggested by Copilot."}, {"letter": "C", "text": "Disable Copilot’s inline suggestions."}, {"letter": "D", "text": "Avoid using Copilot for complex tasks."}], "is_multi": false, "answers": ["B"], "explanation": ""}, {"number": 10, "question": "When using GitHub Copilot Chat to generate boilerplate code for various test types, how can you guide the AI to follow the testing standards of your company?", "options": [{"letter": "A", "text": "By using a specific slash command in the prompt."}, {"letter": "B", "text": "By using a specific command in the terminal."}, {"letter": "C", "text": "By using a specific setting in GitHub Copilot’s configuration."}, {"letter": "D", "text": "By using specific prompt examples in your chat request."}], "is_multi": false, "answers": ["D"], "explanation": ""}, {"number": 11, "question": "When can GitHub Copilot still use content that was excluded using content exclusion?", "options": [{"letter": "A", "text": "When the user prompts with @workspace."}, {"letter": "B", "text": "When the repository level settings allow overrides by the user."}, {"letter": "C", "text": "If the content exclusion was configured at the enterprise level, and is overwritten at the organization level."}, {"letter": "D", "text": "If the contents of an excluded file are referenced in code that is not excluded, for example function calls."}], "is_multi": false, "answers": ["D"], "explanation": ""}, {"number": 12, "question": "Which GitHub Copilot plan could an Azure DevOps organization use without requiring a GitHub Enterprise license?", "options": [{"letter": "A", "text": "GitHub Copilot Enterprise"}, {"letter": "B", "text": "GitHub Copilot for Azure DevOps"}, {"letter": "C", "text": "Copilot Teams"}, {"letter": "D", "text": "GitHub Copilot Individual"}], "is_multi": false, "answers": ["B"], "explanation": ""}, {"number": 13, "question": "What GitHub Copilot configuration needs to be enabled to protect against IP infringements?", "options": [{"letter": "A", "text": "Blocking license check configuration"}, {"letter": "B", "text": "Blocking public code matches"}, {"letter": "C", "text": "Allowing license check configuration"}, {"letter": "D", "text": "Allowing public code matches"}], "is_multi": false, "answers": ["B"], "explanation": ""}, {"number": 14, "question": "What can be done during AI development to minimize bias?", "options": [{"letter": "A", "text": "Collect massive amounts of data for training."}, {"letter": "B", "text": "Focus on accuracy of the data."}, {"letter": "C", "text": "Use diverse data, fairness metrics, and human oversight."}, {"letter": "D", "text": "Improve on the computational efficiency and speed."}], "is_multi": false, "answers": ["C"], "explanation": ""}, {"number": 15, "question": "Identify the steps involved in the life cycle of a GitHub Copilot code suggestion? Each correct answer presents part of the solution. (Choose two.)", "options": [{"letter": "A", "text": "Processing telemetry data"}, {"letter": "B", "text": "Generate suggestions"}, {"letter": "C", "text": "Retraining the model"}, {"letter": "D", "text": "Storing user data"}, {"letter": "E", "text": "Capturing the user’s context"}], "is_multi": true, "answers": ["B", "E"], "explanation": ""}, {"number": 16, "question": "How does GitHub Copilot typically handle code suggestions that involve deprecated features or syntax of programming languages?", "options": [{"letter": "A", "text": "GitHub Copilot always filters out deprecated elements to promote the use of current standards."}, {"letter": "B", "text": "GitHub Copilot may suggest deprecated syntax or features if they are present in its training data."}, {"letter": "C", "text": "GitHub Copilot rejects all prompts involving deprecated features to avoid compilation errors."}, {"letter": "D", "text": "GitHub Copilot automatically updates deprecated features in its suggestions to the latest version."}], "is_multi": false, "answers": ["B"], "explanation": ""}, {"number": 17, "question": "In what ways can GitHub Copilot contribute to the design phase of the Software Development Life Cycle (SDLC)?", "options": [{"letter": "A", "text": "GitHub Copilot can generate user interface (UI) prototypes without prompting."}, {"letter": "B", "text": "GitHub Copilot can suggest design patterns and best practices relevant to the project."}, {"letter": "C", "text": "GitHub Copilot can independently create a complete software design."}, {"letter": "D", "text": "GitHub Copilot can manage design team collaboration and version control."}], "is_multi": false, "answers": ["B"], "explanation": ""}, {"number": 18, "question": "Which of the following steps correctly demonstrates how to establish an organization-wide policy for GitHub Copilot Business to restrict its use to certain repositories?", "options": [{"letter": "A", "text": "Create a copilot.policy file in each repository"}, {"letter": "B", "text": "Create a copilot.policy in the .github repository"}, {"letter": "C", "text": "Configure the policies in the organization settings"}, {"letter": "D", "text": "Apply policies through the GitHub Actions configuration"}], "is_multi": false, "answers": ["C"], "explanation": ""}, {"number": 19, "question": "What are the different ways to give context to GitHub Copilot to get more precise responses? Each correct answer presents part of the solution. (Choose two.)", "options": [{"letter": "A", "text": "Engage with chat participants such as @workspace to incorporate collaborative context into the responses."}, {"letter": "B", "text": "Access developer’s previous projects and code repositories to understand their coding style without explicit permission."}, {"letter": "C", "text": "Utilize to interpret developer’s thoughts and intentions without any code or comments."}, {"letter": "D", "text": "Utilize chat variables like #file and #editors to anchor the conversation within the specific context of the files or editors in use."}], "is_multi": true, "answers": ["A", "D"], "explanation": ""}, {"number": 20, "question": "When using GitHub Copilot to identify missing tests in your codebase, which of the following is the most important factor to consider?", "options": [{"letter": "A", "text": "Having a high test coverage percentage in the codebase."}, {"letter": "B", "text": "Using well-known coding practices in your repository."}, {"letter": "C", "text": "Ensuring that the correct context is available to GitHub Copilot."}, {"letter": "D", "text": "Close all the tabs in your IDE that do not have tests in them."}], "is_multi": false, "answers": ["C"], "explanation": ""}, {"number": 21, "question": "Why is it important to ensure the security of the code used in Generative AI (Gen AI) tools?", "options": [{"letter": "A", "text": "Ensuring code security prevents unauthorized access and potential data breaches."}, {"letter": "B", "text": "Ensuring code security enables the AI system to handle larger datasets effectively."}, {"letter": "C", "text": "Ensuring code security maintains the integrity of the AI system."}, {"letter": "D", "text": "Ensuring code security supports the development of more advanced AI features."}], "is_multi": false, "answers": ["A"], "explanation": ""}, {"number": 22, "question": "Select a strategy to increase the performance of GitHub Copilot Chat.", "options": [{"letter": "A", "text": "Use a single GitHub Copilot Chat query to find resolutions for the collection of technical requirements"}, {"letter": "B", "text": "Optimize the usage of memory-intensive operations within generated code"}, {"letter": "C", "text": "Apply prompt engineering techniques to be more specific"}, {"letter": "D", "text": "Limit the number of concurrent users accessing GitHub Copilot Chat"}], "is_multi": false, "answers": ["C"], "explanation": ""}, {"number": 23, "question": "Are there any limitations to consider when using GitHub Copilot for code refactoring?", "options": [{"letter": "A", "text": "GitHub Copilot may not always produce optimized or best-practice code for refactoring."}, {"letter": "B", "text": "GitHub Copilot always produces bug-free code during refactoring."}, {"letter": "C", "text": "GitHub Copilot understands the context of your entire project and refactors code accordingly."}, {"letter": "D", "text": "GitHub Copilot can only be used with a limited set of programming languages."}], "is_multi": false, "answers": ["A"], "explanation": ""}, {"number": 24, "question": "How can GitHub Copilot assist in maintaining consistency across your tests?", "options": [{"letter": "A", "text": "By providing documentation references based on industry best practices."}, {"letter": "B", "text": "By automatically fixing all tests in the code based on the context."}, {"letter": "C", "text": "By identifying a pattern in the way you write tests and suggesting similar patterns for future tests."}, {"letter": "D", "text": "By writing the implementation code for the function based on context"}], "is_multi": false, "answers": ["C"], "explanation": ""}, {"number": 25, "question": "What type of information can you retrieve through GitHub Copilot Business Subscriptions via REST API? Each correct answer presents part of the solution. (Choose two.)", "options": [{"letter": "A", "text": "View code suggestions for a specific user"}, {"letter": "B", "text": "List all GitHub Copilot seat assignments for an organization"}, {"letter": "C", "text": "Get a summary of GitHub Copilot usage for organization members"}, {"letter": "D", "text": "List of all unsubscribed GitHub Copilot members within an organization"}], "is_multi": true, "answers": ["B", "C"], "explanation": ""}, {"number": 26, "question": "What role does the pre-processing of user input play in the data flow of GitHub Copilot Chat?", "options": [{"letter": "A", "text": "It formats the output response before presenting it to the user."}, {"letter": "B", "text": "It filters out irrelevant information from the user’s input prompt."}, {"letter": "C", "text": "It enriches the input prompt with additional context before passing it to the language model."}, {"letter": "D", "text": "It directly generates a response based on the user’s input prompt."}], "is_multi": false, "answers": ["C"], "explanation": ""}, {"number": 27, "question": "How does GitHub Copilot Chat utilize its training data and external sources to generate responses when answering coding questions?", "options": [{"letter": "A", "text": "It primarily relies on the model’s training data to generate responses."}, {"letter": "B", "text": "It combines its training data set, code in user repositories, and external sources like Bing to generate responses."}, {"letter": "C", "text": "It uses user-provided documentation and exclusively to generate responses."}, {"letter": "D", "text": "It primarily uses search results from Bing to generate responses."}], "is_multi": false, "answers": ["B"], "explanation": ""}, {"number": 28, "question": "What is the best way to share feedback about GitHub Copilot Chat when using it on GitHub Mobile?", "options": [{"letter": "A", "text": "The feedback section on the GitHub website."}, {"letter": "B", "text": "By tweeting at GitHub’s official X (previously known as Twitter) account."}, {"letter": "C", "text": "Use the emojis in the Copilot Chat interface."}, {"letter": "D", "text": "The Settings menu in the GitHub Mobile app."}], "is_multi": false, "answers": ["C"], "explanation": ""}, {"number": 29, "question": "What are the additional checks that need to pass before the GitHub Copilot responses are submitted to the user? Each correct answer presents part of the solution. (Choose two.)", "options": [{"letter": "A", "text": "Code quality"}, {"letter": "B", "text": "Compatibility with user-specific settings"}, {"letter": "C", "text": "Performance benchmarking"}, {"letter": "D", "text": "Suggestions matching public code (optional based on settings)"}], "is_multi": true, "answers": ["B", "D"], "explanation": ""}, {"number": 30, "question": "What is a limitation of content exclusions?", "options": [{"letter": "A", "text": "Content exclusions can be worked around as it is only available for Git repositories."}, {"letter": "B", "text": "Repository administrators and organization owners cannot manage content exclusion settings."}, {"letter": "C", "text": "Content exclusions are only available in the GitHub Copilot Individual plan."}, {"letter": "D", "text": "Content exclusions can only be configured by an enterprise administrator."}], "is_multi": false, "answers": ["A"], "explanation": ""}, {"number": 31, "question": "How does GitHub Copilot assist developers in minimizing context switching?", "options": [{"letter": "A", "text": "GitHub Copilot can predict and prevent bugs before they occur."}, {"letter": "B", "text": "GitHub Copilot allows developers to stay in their ID"}, {"letter": "E", "text": ""}, {"letter": "C", "text": "GitHub Copilot can completely replace the need for human collaboration."}, {"letter": "D", "text": "GitHub Copilot can automatically handle project management tasks."}], "is_multi": false, "answers": ["B"], "explanation": ""}, {"number": 32, "question": "A social media manager wants to use AI to filter content. How can they promote transparency in the platform’s AI operations?", "options": [{"letter": "A", "text": "By providing clear explanations about the types of content the AI is designed to filter and how it arrives at its conclusion."}, {"letter": "B", "text": "By relying on a well-regarded AI development company."}, {"letter": "C", "text": "By regularly updating the AI filtering algorithm."}, {"letter": "D", "text": "By focusing on user satisfaction with the content filtering"}], "is_multi": false, "answers": ["A"], "explanation": ""}, {"number": 33, "question": "What are the potential limitations of GitHub Copilot Chat? Each correct answer presents part of the solution. (Choose two.)", "options": [{"letter": "A", "text": "Ability to handle complex code structures"}, {"letter": "B", "text": "Limited training data"}, {"letter": "C", "text": "Extensive support for all programming languages"}, {"letter": "D", "text": "No biases in code suggestions"}], "is_multi": true, "answers": ["A", "B"], "explanation": ""}, {"number": 34, "question": "When using GitHub Copilot Chat to generate unit tests, which slash command would you use?", "options": [{"letter": "A", "text": "/create-tests"}, {"letter": "B", "text": "/generate-tests"}, {"letter": "C", "text": "/tests"}, {"letter": "D", "text": "/init-tests"}], "is_multi": false, "answers": ["C"], "explanation": ""}, {"number": 35, "question": "What is few-shot prompting?", "options": [{"letter": "A", "text": "Telling GitHub Copilot to try multiple times to answer the prompt"}, {"letter": "B", "text": "Telling GitHub Copilot to iterate several times on the answer before returning it to you"}, {"letter": "C", "text": "Telling GitHub Copilot from which sources it should base the response on"}, {"letter": "D", "text": "Telling GitHub Copilot about the mechanism you want it to use and how to incorporate that into the response"}], "is_multi": false, "answers": ["D"], "explanation": ""}, {"number": 36, "question": "What content can be configured to be excluded with content exclusions? Each correct answer presents part of the solution. (Choose three.)", "options": [{"letter": "A", "text": "Gists"}, {"letter": "B", "text": "Repositories"}, {"letter": "C", "text": "Files"}, {"letter": "D", "text": "Lines in files"}, {"letter": "E", "text": "Folders"}], "is_multi": true, "answers": ["B", "C", "E"], "explanation": ""}, {"number": 37, "question": "What are the potential limitations of GitHub Copilot in maintaining existing codebases?", "options": [{"letter": "A", "text": "GitHub Copilot’s suggestions are always aware of the entire codebase."}, {"letter": "B", "text": "GitHub Copilot can refactor and optimize the entire codebase up to 10,000 lines of code."}, {"letter": "C", "text": "GitHub Copilot can independently manage and resolve all merge conflicts in version control."}, {"letter": "D", "text": "GitHub Copilot might not fully understand the context and dependencies within a large codebase."}], "is_multi": false, "answers": ["D"], "explanation": ""}, {"number": 38, "question": "Which of the following statements best describes the impact of GitHub Copilot on the software development process?", "options": [{"letter": "A", "text": "It decreases software vulnerabilities from third party dependencies."}, {"letter": "B", "text": "It increases productivity by automating repetitive coding tasks."}, {"letter": "C", "text": "It reduces developer overhead by automating testing workflows."}, {"letter": "D", "text": "It replaces the need for developers in the software development process."}], "is_multi": false, "answers": ["B"], "explanation": ""}, {"number": 39, "question": "Which principle emphasizes that AI systems should be understandable and provide clear information on how they work?", "options": [{"letter": "A", "text": "Fairness"}, {"letter": "B", "text": "Accountability"}, {"letter": "C", "text": "Transparency"}, {"letter": "D", "text": "Inclusiveness"}], "is_multi": false, "answers": ["C"], "explanation": ""}, {"number": 40, "question": "A team is using GitHub Copilot Individual in their daily development activities. They need to exclude specific files from being used to inform code completion suggestions.How can they achieve this?", "options": [{"letter": "A", "text": "Upgrade to Copilot Business"}, {"letter": "B", "text": "Add a .gitignore file to the repo"}, {"letter": "C", "text": "Have an organization owner configure content exclusions"}, {"letter": "D", "text": "Have a repo administrator configure content exclusions"}, {"letter": "E", "text": "Use the #file Chat variable to exclude the files"}], "is_multi": false, "answers": ["A"], "explanation": ""}, {"number": 41, "question": "What specific function does the ‘/fix’ slash command perform?", "options": [{"letter": "A", "text": "Proposes changes for detected issues, suggesting corrections for syntax errors and programming mistakes."}, {"letter": "B", "text": "Converts pseudocode into executable code, optimizing for readability and maintainability."}, {"letter": "C", "text": "Generates new code snippets based on language syntax and best practices."}, {"letter": "D", "text": "Initiates a code review with static analysis tools for security and logic errors."}], "is_multi": false, "answers": ["A"], "explanation": ""}, {"number": 42, "question": "Which GitHub Copilot pricing plans include features that exclude your GitHub Copilot data like usage, prompts, and suggestions from default training GitHub Copilot? (Choose two.)", "options": [{"letter": "A", "text": "GitHub Copilot Codespace"}, {"letter": "B", "text": "GitHub Copilot Business"}, {"letter": "C", "text": "GitHub Copilot Individual"}, {"letter": "D", "text": "GitHub Copilot Enterprise"}], "is_multi": true, "answers": ["B", "D"], "explanation": ""}, {"number": 43, "question": "How can GitHub Copilot aid developers in writing documentation for their code?", "options": [{"letter": "A", "text": "GitHub Copilot can suggest summaries or descriptions based on the code’s functionality."}, {"letter": "B", "text": "GitHub Copilot can only generate content in markdown format."}, {"letter": "C", "text": "GitHub Copilot can automatically generate complete and detailed documentation."}, {"letter": "D", "text": "GitHub Copilot cannot assist in writing documentation or comments."}], "is_multi": false, "answers": ["A"], "explanation": ""}, {"number": 44, "question": "Which of the following is a risk associated with using AI?", "options": [{"letter": "A", "text": "AI replaces the need for developer opportunities in most fields."}, {"letter": "B", "text": "AI eliminated the need for data privacy regulations."}, {"letter": "C", "text": "AI algorithms are incapable of perpetuating existing biases."}, {"letter": "D", "text": "AI systems can sometimes make decisions that are difficult to interpret."}], "is_multi": false, "answers": ["D"], "explanation": ""}, {"number": 45, "question": "What do you check when GitHub Copilot content exclusions are not working? Each correct answer presents part of the solution. (Choose two.)", "options": [{"letter": "A", "text": "If GitHub Copilot can connect to the server selected in your user settings."}, {"letter": "B", "text": "If the user is in an organization that has content exclusions configured."}, {"letter": "C", "text": "If the content exclusion settings changed in the last 30 minutes or before that."}, {"letter": "D", "text": "If the user is part of the content exclusion team that limits the use of content exclusions."}], "is_multi": true, "answers": ["B", "C"], "explanation": ""}, {"number": 46, "question": "When using an IDE with a supported GitHub Copilot plug-in, which Chat features can be accessed from within the IDE? Each correct answer presents part of the solution. (Choose two.)", "options": [{"letter": "A", "text": "Explain code and suggest improvements"}, {"letter": "B", "text": "Find out about releases and commits"}, {"letter": "C", "text": "Generate unit tests"}, {"letter": "D", "text": "Plan coding tasks"}], "is_multi": true, "answers": ["A", "C"], "explanation": ""}, {"number": 47, "question": "How does GitHub Copilot assist developers in reducing the amount of manual boilerplate code they write?", "options": [{"letter": "A", "text": "By refactoring the entire codebase to eliminate boilerplate code without developer input."}, {"letter": "B", "text": "By suggesting code snippets that can be reused across different parts of the project."}, {"letter": "C", "text": "By engaging in real-time collaboration with multiple developers to write boilerplate code."}, {"letter": "D", "text": "By predicting future coding requirements and pre-emptively generating boilerplate code"}], "is_multi": false, "answers": ["B"], "explanation": ""}, {"number": 48, "question": "What is the impact of the “Fill-In-the-Middle” (FIM) technique on GitHub Copilot’s code suggestions?", "options": [{"letter": "A", "text": "Improves suggestions by considering both the prefix and suffix of the code, filling in the middle part more accurately."}, {"letter": "B", "text": "Restricts Copilot to use only external databases for generating code suggestions."}, {"letter": "C", "text": "Allows Copilot to generate suggestions based only on the prefix of the code."}, {"letter": "D", "text": "Ignores both the prefix and suffix of the code, focusing only on user comments for context."}], "is_multi": false, "answers": ["A"], "explanation": ""}, {"number": 49, "question": "Which scenarios can GitHub Copilot Chat be used to increase productivity? Each correct answer presents part of the solution. (Choose two.)", "options": [{"letter": "A", "text": "Create a documentation file for the newly created code base."}, {"letter": "B", "text": "Fast tracking of release management activities to move code to production main branch."}, {"letter": "C", "text": "A project plan for the team needs to be generated using a project management software."}, {"letter": "D", "text": "A developer is added to a new project and would like to understand the current software code."}], "is_multi": true, "answers": ["A", "D"], "explanation": ""}, {"number": 50, "question": "Which of the following statements correctly describes how GitHub Copilot Individual uses prompt data? Each correct answer presents part of the solution. (Choose two.)", "options": [{"letter": "A", "text": "Real-time user input helps generate context-aware code suggestions."}, {"letter": "B", "text": "Prompt data is used internally by GitHub for improving the search engine."}, {"letter": "C", "text": "Prompt data is used to train machine learning models for better code suggestions."}, {"letter": "D", "text": "Prompt data is stored unencrypted for faster processing."}], "is_multi": true, "answers": ["A", "C"], "explanation": ""}, {"number": 51, "question": "What types of prompts or code snippets might be flagged by the GitHub Copilot toxicity filter? Each correct answer presents part of the solution. (Choose two.)", "options": [{"letter": "A", "text": "Hate speech or discriminatory language (e.g., racial slurs, offensive stereotypes)"}, {"letter": "B", "text": "Sexually suggestive or explicit content"}, {"letter": "C", "text": "Code that contains logical errors or produces unexpected results"}, {"letter": "D", "text": "Code comments containing strong opinions or criticisms"}], "is_multi": true, "answers": ["A", "B"], "explanation": ""}, {"number": 52, "question": "Which of the following describes role prompting?", "options": [{"letter": "A", "text": "Describing in your prompt what your role is to get a better suggestion"}, {"letter": "B", "text": "Tell GitHub Copilot in what tone of voice it should respond"}, {"letter": "C", "text": "Prompt GitHub Copilot to explain what was the role of a suggestion"}, {"letter": "D", "text": "Giving GitHub Copilot multiple examples of the form of the data you want to use"}], "is_multi": false, "answers": ["A"], "explanation": ""}, {"number": 53, "question": "How does GitHub Copilot Chat help to fix security issues in your codebase?", "options": [{"letter": "A", "text": "By automatically refactoring the entire codebase to remove vulnerabilities."}, {"letter": "B", "text": "By annotating the given suggestions with known vulnerability patterns."}, {"letter": "C", "text": "By enforcing strict coding standards that prevent the introduction of vulnerabilities."}, {"letter": "D", "text": "By providing detailed reports on the security vulnerabilities present in the codebase."}], "is_multi": false, "answers": ["B"], "explanation": ""}, {"number": 54, "question": "What two options navigate to configure duplicate detection? Each correct answer presents part of the solution. (Choose two.)", "options": [{"letter": "A", "text": "Organization settings → Copilot → Policies"}, {"letter": "B", "text": "Enterprise settings → Copilot → Policies"}, {"letter": "C", "text": "Repository settings → Copilot → Policies"}, {"letter": "D", "text": "User settings → Copilot → Policies"}], "is_multi": true, "answers": ["A", "B"], "explanation": ""}, {"number": 55, "question": "How can the concept of fairness be integrated into the process of operating an AI tool?", "options": [{"letter": "A", "text": "Focusing on accessibility will ensure fairness."}, {"letter": "B", "text": "Training AI data and algorithms to be free from biases will ensure fairness."}, {"letter": "C", "text": "Regularly monitoring the AI tool’s performance will ensure fairness in its outputs."}, {"letter": "D", "text": "Focusing on collecting large datasets for training will ensure fairness."}], "is_multi": false, "answers": ["A"], "explanation": ""}, {"number": 56, "question": "What are the potential risks associated with relying heavily on code generated from GitHub Copilot? Each correct answer presents part of the solution. (Choose two.)", "options": [{"letter": "A", "text": "GitHub Copilot may introduce security vulnerabilities by suggesting code with known exploits."}, {"letter": "B", "text": "GitHub Copilot’s suggestions may not always reflect best practices or the latest coding standards."}, {"letter": "C", "text": "GitHub Copilot may increase development lead time by providing irrelevant suggestions."}, {"letter": "D", "text": "GitHub Copilot may decrease developer velocity by requiring too much time in prompt engineering."}], "is_multi": true, "answers": ["A", "B"], "explanation": ""}, {"number": 57, "question": "Which Copilot Enterprise features are available in all commercially supported IDEs?", "options": [{"letter": "A", "text": "Knowledge bases"}, {"letter": "B", "text": "Chat"}, {"letter": "C", "text": "Inline suggestions"}, {"letter": "D", "text": "Pull request summaries"}], "is_multi": true, "answers": ["B", "C"], "explanation": ""}, {"number": 58, "question": "What is used by GitHub Copilot in the IDE to determine the prompt context?", "options": [{"letter": "A", "text": "Information from the IDE like open tabs, cursor location, selected code."}, {"letter": "B", "text": "All the code visible in the current ID"}, {"letter": "E", "text": ""}, {"letter": "C", "text": "All the code in the current repository and any git submodules."}, {"letter": "D", "text": "The open tabs in the IDE and the current folder of the terminal."}], "is_multi": false, "answers": ["A"], "explanation": ""}, {"number": 59, "question": "Which of the following does GitHub Copilot’s LLM derive context from when producing a response?", "options": [{"letter": "A", "text": "Version control system integrated with the IDE"}, {"letter": "B", "text": "Syntax highlighting scheme of the code in the IDE"}, {"letter": "C", "text": "Frequency of commits to the repository"}, {"letter": "D", "text": "Neighboring or related files within a project"}], "is_multi": false, "answers": ["D"], "explanation": ""}, {"number": 60, "question": "How does GitHub Copilot Chat ensure that a function works correctly?", "options": [{"letter": "A", "text": "By automatically writing all the tests for the function."}, {"letter": "B", "text": "By suggesting assertions based on the code’s context and semantics."}, {"letter": "C", "text": "By executing the test cases to validate the correctness of the code."}, {"letter": "D", "text": "By writing the implementation code for the function."}], "is_multi": false, "answers": ["A"], "explanation": ""}], "set5": [{"number": 61, "question": "What is a benefit of using custom models in GitHub Copilot?", "options": [{"letter": "A", "text": "Responses use the organization’s LLM engine"}, {"letter": "B", "text": "Responses are faster to produce and appear sooner"}, {"letter": "C", "text": "Responses are guaranteed to be correct"}, {"letter": "D", "text": "Responses use practices and patterns in your repositories"}], "is_multi": false, "answers": ["D"], "explanation": ""}, {"number": 62, "question": "What kind of insights can the GitHub Copilot usage metrics API provide to help evaluate the effectiveness of GitHub Copilot? Each correct answer presents part of the solution. (Choose two.)", "options": [{"letter": "A", "text": "The API can generate detailed reports on code quality improvements made by GitHub Copilot."}, {"letter": "B", "text": "The API can track the number of code suggestions accepted and used in the organization."}, {"letter": "C", "text": "The API can provide feedback on coding style and standards compliance."}, {"letter": "D", "text": "The API can provide Copilot Chat specific suggestions acceptance metrics."}, {"letter": "E", "text": "The API can refactor your code to improve productivity."}], "is_multi": true, "answers": ["B", "D"], "explanation": ""}, {"number": 63, "question": "Why might a Generative AI (Gen AI) tool create inaccurate outputs?", "options": [{"letter": "A", "text": "The Gen AI tool is programmed with a focus on creativity over factual accuracy."}, {"letter": "B", "text": "The Gen AI tool is experiencing downtime and is not fully recovered."}, {"letter": "C", "text": "The training data might contain biases or inconsistencies."}, {"letter": "D", "text": "The Gen AI tool is being overloaded with too many requests at once."}], "is_multi": false, "answers": ["C"], "explanation": ""}, {"number": 64, "question": "What should developers consider when relying on GitHub Copilot for generating code that involves statistical analysis?", "options": [{"letter": "A", "text": "GitHub Copilot will automatically correct any statistical errors found in the user’s initial code."}, {"letter": "B", "text": "GitHub Copilot can independently verify the statistical significance of results."}, {"letter": "C", "text": "GitHub Copilot can design new statistical methods that have not been previously documented."}, {"letter": "D", "text": "GitHub Copilot’s suggestions are based on statistical trends and may not always apply accurately to specific datasets."}], "is_multi": false, "answers": ["D"], "explanation": ""}, {"number": 65, "question": "How do you generate code suggestions with GitHub Copilot in the CLI?", "options": [{"letter": "A", "text": "Describe the project’s architecture → Use the copilot generate command → Accept the generated suggestion."}, {"letter": "B", "text": "Type out the code snippet → Use the copilot refine command to enhance it → Review the suggested command."}, {"letter": "C", "text": "Write code comments → Press the suggestion shortcut → Select the best suggestion from the list."}, {"letter": "D", "text": "Use ‘gh copilot suggest’ → Write the command you want → Select the best suggestion from the list."}], "is_multi": false, "answers": ["D"], "explanation": ""}, {"number": 66, "question": "How does GitHub Copilot identify matching code and ensure that public code is appropriately handled or blocked? Each correct answer presents part of the solution. (Choose two.)", "options": [{"letter": "A", "text": "Implementing safeguards to detect and avoid suggesting verbatim snippets from public code"}, {"letter": "B", "text": "Filtering out suggestions that match code from public repositories"}, {"letter": "C", "text": "Using machine learning models trained only on private repositories"}, {"letter": "D", "text": "Reviewing and storing user-specific private repository data for future suggestions"}], "is_multi": true, "answers": ["A", "B"], "explanation": ""}, {"number": 67, "question": "How does GitHub Copilot utilize chat history to enhance its code completion capabilities?", "options": [{"letter": "A", "text": "By sharing chat history with third-party services to improve integration and functionality."}, {"letter": "B", "text": "By analyzing past chat interactions to identify common programming patterns and errors."}, {"letter": "C", "text": "By logging chat history to monitor user activity and ensure compliance with coding standards."}, {"letter": "D", "text": "By using chat history to offer personalized code snippets based on previous prompts."}], "is_multi": false, "answers": ["D"], "explanation": ""}, {"number": 68, "question": "In what way can GitHub Copilot and GitHub Copilot Chat aid developers in modernizing applications?", "options": [{"letter": "A", "text": "GitHub Copilot can suggest modern programming patterns based on your code."}, {"letter": "B", "text": "GitHub Copilot can create and deploy full-stack applications based on a single query."}, {"letter": "C", "text": "GitHub Copilot can automatically refactor applications to align with upcoming standards."}, {"letter": "D", "text": "GitHub Copilot can directly convert legacy applications into cloud-native architectures."}], "is_multi": false, "answers": ["C"], "explanation": ""}, {"number": 69, "question": "What is the main purpose of the duplication detection filter in GitHub Copilot?", "options": [{"letter": "A", "text": "To compare user-generated code against a private repository for potential matches."}, {"letter": "B", "text": "To encourage the user to follow coding best practices preventing code duplication."}, {"letter": "C", "text": "To allow administrators to control which suggestions are visible to developers based on custom criteria."}, {"letter": "D", "text": "To detect and block suggestions that match public code snippets on GitHub if they contain about 150 characters."}], "is_multi": false, "answers": ["D"], "explanation": ""}, {"number": 70, "question": "How can GitHub Copilot assist with code refactoring tasks?", "options": [{"letter": "A", "text": "GitHub Copilot can remove unnecessary files from the project directory."}, {"letter": "B", "text": "GitHub Copilot can suggest refactoring improvements for better code quality."}, {"letter": "C", "text": "GitHub Copilot can fix syntax errors without user input."}, {"letter": "D", "text": "GitHub Copilot can automatically rewrite code to follow best practices."}], "is_multi": false, "answers": ["D"], "explanation": ""}, {"number": 71, "question": "Which of the following are true about code suggestions? Each correct answer presents part of the solution. (Choose two.)", "options": [{"letter": "A", "text": "Code suggestions are limited to single-line suggestions"}, {"letter": "B", "text": "Code suggestions are guaranteed to not expose known security vulnerabilities"}, {"letter": "C", "text": "Code suggestions will always compile or run without modifications"}, {"letter": "D", "text": "You can use keyboard shortcuts to accept the next word in a suggestion"}, {"letter": "E", "text": "Alternative code suggestions can be shown in a new tab"}], "is_multi": true, "answers": ["D", "E"], "explanation": ""}, {"number": 72, "question": "How can the insights gained from the metrics API be used to improve the development process in conjunction with GitHub Copilot?", "options": [{"letter": "A", "text": "Real-time debugging and error resolution statistics."}, {"letter": "B", "text": "Automated generation of complete project documentation."}, {"letter": "C", "text": "Detailed analysis of GitHub Copilot’s suggestions vs. manual coding."}, {"letter": "D", "text": "Insights on the types of coding languages where GitHub Copilot is most helpful."}], "is_multi": true, "answers": ["C", "D"], "explanation": ""}, {"number": 73, "question": "What reasons could apply if code suggestions are not working in your editor? (Choose three.)", "options": [{"letter": "A", "text": "You do not have an active internet connection"}, {"letter": "B", "text": "Your programming language is not supported"}, {"letter": "C", "text": "You are working in files included in your .gitignore"}, {"letter": "D", "text": "You do not have a valid GitHub Copilot license"}, {"letter": "E", "text": "Your content exclusion is active and blocks the use of GitHub Copilot"}], "is_multi": true, "answers": ["A", "B", "D"], "explanation": ""}, {"number": 74, "question": "How can users provide feedback about GitHub Copilot Chat using their IDE?", "options": [{"letter": "A", "text": "By emailing the support team directly."}, {"letter": "B", "text": "Through the “Share Feedback” button in the Copilot Chat panel."}, {"letter": "C", "text": "By filling out a feedback form on the GitHub website."}, {"letter": "D", "text": "By posting on the GitHub forums."}], "is_multi": false, "answers": ["B"], "explanation": ""}, {"number": 75, "question": "What types of content can GitHub Copilot Knowledge Base answer questions about? Each correct answer presents part of the solution. (Choose three.)", "options": [{"letter": "A", "text": "compiled binaries"}, {"letter": "B", "text": "code snippets"}, {"letter": "C", "text": "design patterns"}, {"letter": "D", "text": "screenshots"}, {"letter": "E", "text": "documentation"}], "is_multi": true, "answers": ["B", "C", "E"], "explanation": ""}, {"number": 76, "question": "GitHub Copilot in the Command Line Interface (CLI) can be used to configure the following settings: Each correct answer presents part of the solution. (Choose two.)", "options": [{"letter": "A", "text": "Usage analytics"}, {"letter": "B", "text": "The default editor"}, {"letter": "C", "text": "The default execution confirmation"}, {"letter": "D", "text": "GitHub CLI subcommands"}], "is_multi": true, "answers": ["B", "C"], "explanation": ""}, {"number": 77, "question": "What method can be used to interact with GitHub Copilot?", "options": [{"letter": "A", "text": "From a watch window in an IDE debug session"}, {"letter": "B", "text": "By using a properly configured GitHub CLI"}, {"letter": "C", "text": "From a web browser at https://github.copilot.com"}, {"letter": "D", "text": "By using chat capabilities in NeoVim"}], "is_multi": false, "answers": ["A"], "explanation": ""}, {"number": 78, "question": "What is the primary purpose of organization audit logs in GitHub Copilot Business?", "options": [{"letter": "A", "text": "To track the number of lines of code suggested by Copilot"}, {"letter": "B", "text": "To assign software licenses within the organization"}, {"letter": "C", "text": "To monitor code conflicts across repositories"}, {"letter": "D", "text": "To monitor administrator activities and actions within the organization"}], "is_multi": false, "answers": ["D"], "explanation": ""}, {"number": 79, "question": "If you are working on open source projects, GitHub Copilot Individual can be paid:", "options": [{"letter": "A", "text": "Through an invoice or a credit card"}, {"letter": "B", "text": "Through an Azure Subscription"}, {"letter": "C", "text": "Based on the payment method in your user profile"}, {"letter": "D", "text": "N/A - Copilot Individual is a free service for all open source projects"}], "is_multi": false, "answers": ["D"], "explanation": ""}, {"number": 80, "question": "How long does GitHub retain Copilot data for Business and Enterprise? Each correct answer presents part of the solution. (Choose two.)", "options": [{"letter": "A", "text": "Prompts and Suggestion: Retained for 28 days"}, {"letter": "B", "text": "Prompts and Suggestions: Not retained"}, {"letter": "C", "text": "User Engagement Data: Kept for Two Years"}, {"letter": "D", "text": "User Engagement Data: Kept for 1 Year"}], "is_multi": true, "answers": ["A", "C"], "explanation": ""}, {"number": 81, "question": "What is the process behind identifying public code matches when using a public code filter enabled in GitHub Copilot?", "options": [{"letter": "A", "text": "Running code suggestions through filters designed to detect public code"}, {"letter": "B", "text": "Comparing suggestions against public code using machine learning"}, {"letter": "C", "text": "Reviewing the user’s browsing history to identify public repositories"}, {"letter": "D", "text": "Analyzing the context and structure of the code being written"}], "is_multi": false, "answers": ["A"], "explanation": ""}, {"number": 82, "question": "What GitHub Copilot feature can be configured at the organization level to prevent GitHub Copilot suggesting publicly available code snippets?", "options": [{"letter": "A", "text": "GitHub Copilot Chat in the IDE"}, {"letter": "B", "text": "GitHub Copilot access to Bing"}, {"letter": "C", "text": "GitHub Copilot duplication detection filter"}, {"letter": "D", "text": "GitHub Copilot Chat in GitHub Mobile"}], "is_multi": false, "answers": ["C"], "explanation": ""}, {"number": 83, "question": "Which of the following GitHub Copilot Business related activities can be tracked using the organization audit logs?", "options": [{"letter": "A", "text": "Accepted chat suggestions"}, {"letter": "B", "text": "Changes to content exclusion settings"}, {"letter": "C", "text": "Code suggestions made by GitHub Copilot"}, {"letter": "D", "text": "Suggestions blocked by duplication detection filtering"}], "is_multi": false, "answers": ["B"], "explanation": ""}, {"number": 84, "question": "How does GitHub Copilot Chat ensure that a function works correctly?", "options": [{"letter": "A", "text": "By automatically writing all the tests for the function."}, {"letter": "B", "text": "By suggesting assertions based on the code’s context and semantics."}, {"letter": "C", "text": "By executing the test cases to validate the correctness of the code."}, {"letter": "D", "text": "By writing the implementation code for the function."}], "is_multi": false, "answers": ["A"], "explanation": ""}, {"number": 85, "question": "How does GitHub Copilot suggest code optimizations for improved performance?", "options": [{"letter": "A", "text": "By enforcing strict coding standards that ensure optimal performance."}, {"letter": "B", "text": "By providing detailed reports on the performance of the codebase."}, {"letter": "C", "text": "By analyzing the codebase and suggesting more efficient algorithms or data structures."}, {"letter": "D", "text": "By automatically rewriting the codebase to use more efficient code."}], "is_multi": false, "answers": ["C"], "explanation": ""}, {"number": 86, "question": "How long does it take content exclusion to add or be updated?", "options": [{"letter": "A", "text": "Up to 30 minutes"}, {"letter": "B", "text": "60-90 minutes"}, {"letter": "C", "text": "45-60 minutes"}, {"letter": "D", "text": "24 hours"}], "is_multi": false, "answers": ["A"], "explanation": ""}, {"number": 87, "question": "What is the correct way to exclude specific files from being used by GitHub Copilot Business during code suggestions?", "options": [{"letter": "A", "text": "Rename the files to include the suffix_no_copilot"}, {"letter": "B", "text": "Modify the .gitignore file to include the specific files"}, {"letter": "C", "text": "Use the GitHub Copilot settings in the user interface to exclude files"}, {"letter": "D", "text": "Add the specific files to a copilot .ignore file"}], "is_multi": false, "answers": ["C"], "explanation": ""}, {"number": 88, "question": "What are the effects of content exclusions? Each correct answer presents part of the solution. (Choose two.)", "options": [{"letter": "A", "text": "The IDE will not count coding suggestions in the excluded content."}, {"letter": "B", "text": "The excluded content is no longer used while debugging the code."}, {"letter": "C", "text": "The excluded content is not directly available to GitHub Copilot to use a context."}, {"letter": "D", "text": "GitHub Copilot suggestions are no longer available in the excluded files."}], "is_multi": true, "answers": ["C", "D"], "explanation": ""}, {"number": 89, "question": "How does GitHub Copilot Enterprise assist in code reviews during the pull request process? (Choose two.)", "options": [{"letter": "A", "text": "It generates a prose summary and bulleted list of key changes for pull requests."}, {"letter": "B", "text": "It can answer questions about the changeset of the pull request."}, {"letter": "C", "text": "It automatically merges pull requests after an automated review."}, {"letter": "D", "text": "It can validate the accuracy of the changes in the pull request."}], "is_multi": true, "answers": ["A", "B"], "explanation": ""}, {"number": 90, "question": "How can you get multiple suggestions from GitHub Copilot?", "options": [{"letter": "A", "text": "By using the inline chat functionality with the command/multiple"}, {"letter": "B", "text": "By using @workspace in the chat window"}, {"letter": "C", "text": "By opening the completions panel in your editor"}, {"letter": "D", "text": "By asking for multiple suggestions using comments in your code"}], "is_multi": false, "answers": ["C"], "explanation": ""}, {"number": 91, "question": "What GitHub Copilot pricing plan gives you access to your company’s knowledge bases?", "options": [{"letter": "A", "text": "GitHub Copilot Enterprise"}, {"letter": "B", "text": "GitHub Copilot Individual"}, {"letter": "C", "text": "GitHub Copilot Business"}, {"letter": "D", "text": "GitHub Copilot Professional"}], "is_multi": false, "answers": ["A"], "explanation": ""}, {"number": 92, "question": "An independent contractor develops applications for a variety of different customers. Assuming no concerns from their customers, which GitHub Copilot plan is best suited?", "options": [{"letter": "A", "text": "GitHub Copilot Individual"}, {"letter": "B", "text": "GitHub Copilot Enterprise"}, {"letter": "C", "text": "GitHub Copilot Business"}, {"letter": "D", "text": "GitHub Copilot Teams"}, {"letter": "E", "text": "GitHub Copilot Business for non-GHE Customers"}], "is_multi": false, "answers": ["A"], "explanation": ""}, {"number": 93, "question": "What configuration needs to be set to get help from Microsoft and GitHub protecting against IP infringement while using GitHub Copilot?", "options": [{"letter": "A", "text": "Enforce blocking of MIT or GPL licensed code"}, {"letter": "B", "text": "Enable GitHub Copilot license checking"}, {"letter": "C", "text": "Suggestions matching public code to ‘blocked’. You need to check code suggestions yourself before accepting"}], "is_multi": false, "answers": ["C"], "explanation": ""}, {"number": 94, "question": "Which GitHub Copilot plan allows for prompt and suggestion collection?", "options": [{"letter": "A", "text": "GitHub Copilot Individuals"}, {"letter": "B", "text": "GitHub Copilot Codespace"}, {"letter": "C", "text": "GitHub Copilot Business"}, {"letter": "D", "text": "GitHub Copilot Enterprise"}], "is_multi": false, "answers": ["A"], "explanation": ""}, {"number": 95, "question": "Which Copilot Individual features are available when using a supported extension for Visual Studio, VS Code, or JetBrains IDEs? Each correct answer presents part of the solution. (Choose two.)", "options": [{"letter": "A", "text": "Chat"}, {"letter": "B", "text": "Pull Request Diff Analysis"}, {"letter": "C", "text": "Code suggestions"}, {"letter": "D", "text": "Knowledge Base"}], "is_multi": true, "answers": ["A", "C"], "explanation": ""}, {"number": 96, "question": "How does GitHub Copilot Chat help in understanding the existing codebase?", "options": [{"letter": "A", "text": "By automatically refactoring code to improve readability."}, {"letter": "B", "text": "By providing visual diagrams of the code structure."}, {"letter": "C", "text": "By running code linters and formatters."}, {"letter": "D", "text": "By answering questions about the code and generating explanations."}], "is_multi": false, "answers": ["D"], "explanation": ""}, {"number": 97, "question": "How is GitHub Copilot Individual billed? Each correct answer presents part of the solution. (Choose two.)", "options": [{"letter": "A", "text": "Free (not billed) for all open source projects"}, {"letter": "B", "text": "Monthly, as metered service based on actual consumption"}, {"letter": "C", "text": "Annually as a subscription"}, {"letter": "D", "text": "Monthly as a subscription"}], "is_multi": true, "answers": ["C", "D"], "explanation": ""}, {"number": 98, "question": "Which of the following is correct about GitHub Copilot Knowledge Bases?", "options": [{"letter": "A", "text": "All file types are indexed"}, {"letter": "B", "text": "Indexing is static"}, {"letter": "C", "text": "All repos are indexed"}, {"letter": "D", "text": "It is an Enterprise feature"}], "is_multi": false, "answers": ["D"], "explanation": ""}, {"number": 99, "question": "Which REST API endpoint is used to modify details about a GitHub Copilot Business subscription? Each correct answer part of the solution. (Choose two.)", "options": [{"letter": "A", "text": "Add teams to the Copilot subscription for an organization."}, {"letter": "B", "text": "Remove teams from the Copilot subscription for an organization."}, {"letter": "C", "text": "Upgrade or downgrade the subscription tier"}, {"letter": "D", "text": "Migrate Copilot seat assignments between GitHub organizations"}, {"letter": "E", "text": "Reassign Copilot seats based on GitHub repository size"}], "is_multi": true, "answers": ["A", "B"], "explanation": ""}, {"number": 100, "question": "Which of the following is the correct way to access the audit log events for GitHub Copilot Business?", "options": [{"letter": "A", "text": "Use the Audit log section in the organization’s GitHub settings"}, {"letter": "B", "text": "Navigate to the Insights tab in the repository settings"}, {"letter": "C", "text": "Use the Code tab in the GitHub repository"}, {"letter": "D", "text": "Navigate to the Security tab in the organization’s GitHub settings"}], "is_multi": false, "answers": ["A"], "explanation": ""}, {"number": 101, "question": "Where is the proxy service hosted?", "options": [{"letter": "A", "text": "Amazon Web Service"}, {"letter": "B", "text": "Self hosted"}, {"letter": "C", "text": "Microsoft Azure"}, {"letter": "D", "text": "Google Cloud Platform"}], "is_multi": false, "answers": ["C"], "explanation": ""}, {"number": 102, "question": "A company is currently storing code in BitBucket and would like to use GitHub Copilot. Which GitHub Copilot plan will be most cost effective to allow them to manage users with their Identity Provider (e.g. Okta)?", "options": [{"letter": "A", "text": "GitHub Copilot Individual"}, {"letter": "B", "text": "GitHub Copilot Enterprise"}, {"letter": "C", "text": "GitHub Copilot Teams"}, {"letter": "D", "text": "GitHub Copilot Business for non-GHE customers"}], "is_multi": false, "answers": ["C"], "explanation": ""}, {"number": 103, "question": "How can you improve the context used by GitHub Copilot? Each correct answer presents part of the solution. (Choose two.)", "options": [{"letter": "A", "text": "By adding variables (#selection) to your prompt"}, {"letter": "B", "text": "By adding the full file paths to your prompt of important files"}, {"letter": "C", "text": "By adding the important files to your .gitconfig"}, {"letter": "D", "text": "By opening the relevant tabs in your IDE"}], "is_multi": true, "answers": ["A", "D"], "explanation": ""}, {"number": 104, "question": "What role does chat history play in GitHub Copilot’s code suggestions?", "options": [{"letter": "A", "text": "Chat history is irrelevant to GitHub Copilot and does not affect its functionality."}, {"letter": "B", "text": "Chat history provides context to GitHub Copilot, improving the relevance and accuracy of its code suggestions."}, {"letter": "C", "text": "Chat history is stored and shared with other users to enhance collaboration."}, {"letter": "D", "text": "Chat history is used to train the GitHub Copilot model in real-time."}], "is_multi": false, "answers": ["B"], "explanation": ""}, {"number": 105, "question": "How can GitHub Copilot assist developers during the requirements analysis phase of the Software Development Life Cycle (SDLC)?", "options": [{"letter": "A", "text": "By managing stakeholder communication and meetings."}, {"letter": "B", "text": "By automatically generating detailed requirements documents."}, {"letter": "C", "text": "By providing templates and code snippets that help in documenting requirements."}, {"letter": "D", "text": "By identifying and fixing potential requirement conflicts when using /help."}], "is_multi": false, "answers": ["C"], "explanation": ""}, {"number": 106, "question": "What are two techniques that can be used to improve prompts to GitHub Copilot? (Choose two.)", "options": [{"letter": "A", "text": "Provide specific success criteria"}, {"letter": "B", "text": "Provide links to supporting documentation"}, {"letter": "C", "text": "Provide all information about the utilized files"}, {"letter": "D", "text": "Provide insight on where to get the content from to get a response."}], "is_multi": true, "answers": ["A", "C"], "explanation": ""}, {"number": 107, "question": "Which of the following scenarios best describes the intended use of GitHub Copilot Chat as a tool?", "options": [{"letter": "A", "text": "A solution for software development, requiring no additional input or oversight."}, {"letter": "B", "text": "A productivity tool that provides suggestions, but relying on human judgement."}, {"letter": "C", "text": "A tool solely designed for debugging and error correction."}, {"letter": "D", "text": "A complete replacement for developers generating code."}], "is_multi": false, "answers": ["B"], "explanation": ""}, {"number": 108, "question": "Which of the following prompts can be used to guide GitHub Copilot Chat in refactoring code for quality improvements? Each correct answer presents part of the solution. (Choose two.)", "options": [{"letter": "A", "text": "“Suggest ways to enhance the maintainability of this code segment.”"}, {"letter": "B", "text": "“Show me how to improve the readability of this function.”"}, {"letter": "C", "text": "“Refactor my application to meet the latest coding standards.”"}, {"letter": "D", "text": "“Predict future coding trends and update my codebase accordingly.”"}], "is_multi": true, "answers": ["A", "B"], "explanation": ""}, {"number": 109, "question": "How can GitHub Copilot facilitate a smoother learning experience when diving into a new programming language?", "options": [{"letter": "A", "text": "GitHub Copilot’s /understand command will help GitHub Copilot understand code written in a targeted programming language."}, {"letter": "B", "text": "GitHub Copilot Chat can provide guidance and support for common coding tasks and challenges in the targeted programming language."}, {"letter": "C", "text": "GitHub Copilot can convert comments into code to grasp the syntax and nuances of a new programming language."}, {"letter": "D", "text": "GitHub Copilot can provide contextualized code suggestions and answer sources from an organization’s documentation."}], "is_multi": false, "answers": ["B"], "explanation": ""}, {"number": 110, "question": "What method can a developer use to generate sample data with GitHub Copilot? Each correct answer presents part of the solution. (Choose two.)", "options": [{"letter": "A", "text": "Utilize GitHub Copilot’s capability to directly access and used databases to create sample data."}, {"letter": "B", "text": "Leveraging GitHub Copilot’s ability to independently initiate and manage data storage services."}, {"letter": "C", "text": "Leveraging GitHub Copilot’s suggestions to create a data based on API documentation in the repository."}, {"letter": "D", "text": "Utilizing GitHub Copilot’s ability to create fictions information from patterns in training data."}], "is_multi": true, "answers": ["C", "D"], "explanation": ""}, {"number": 111, "question": "How can you use GitHub Copilot to get inline suggestions for refactoring your code? (Choose two.)", "options": [{"letter": "A", "text": "By using the “/fix” command in GitHub Copilot in-line chat."}, {"letter": "B", "text": "By adding comments to your code and triggering a suggestion."}, {"letter": "C", "text": "By highlighting the code, you want to fix, right-clicking, and selecting “Refactor using GitHub Copilot.”"}, {"letter": "D", "text": "By highlighting the code you want to fix, right-clicking, and selecting “Fix using GitHub Copilot.”"}, {"letter": "E", "text": "By running the gh copilot fix command."}], "is_multi": true, "answers": ["B", "C"], "explanation": ""}, {"number": 112, "question": "Identify the right use cases where GitHub Copilot Chat is most effective. Each correct answer presents part of the solution. (Choose two.)", "options": [{"letter": "A", "text": "Creation of end-to-end performance testing scenarios for a web application"}, {"letter": "B", "text": "Creation of a unit test scenario for newly developed Python code"}, {"letter": "C", "text": "Create a technical requirement specification from the business requirement documentation"}, {"letter": "D", "text": "Explain a legacy COBOL code and translate the code to another language like C#"}], "is_multi": true, "answers": ["B", "D"], "explanation": ""}, {"number": 113, "question": "How does the ‘/tests’ slash command assist developers?", "options": [{"letter": "A", "text": "Constructs detailed test documentation."}, {"letter": "B", "text": "Creates unit tests for the selected code."}, {"letter": "C", "text": "Executes test cases to find issues with the code."}, {"letter": "D", "text": "Integrates with external testing frameworks."}], "is_multi": false, "answers": ["B"], "explanation": ""}, {"number": 114, "question": "Why code reviewing still necessary when using GitHub Copilot to write tests?", "options": [{"letter": "A", "text": "Because GitHub Copilot generates the best code possible for the test scenario."}, {"letter": "B", "text": "Because GitHub Copilot can cover all possible scenarios in your test cases."}, {"letter": "C", "text": "Because GitHub Copilot replaces the need for manual testing."}, {"letter": "D", "text": "Because GitHub Copilot’s generated test cases may not cover all possible scenarios."}], "is_multi": false, "answers": ["D"], "explanation": ""}, {"number": 115, "question": "How can GitHub Copilot be limited when it comes to suggesting unit tests?", "options": [{"letter": "A", "text": "GitHub Copilot’s limitations in generating unit tests can vary based on the IDE version you are using."}, {"letter": "B", "text": "GitHub Copilot primarily suggest basic unit tests that focus on core functionalities, often requiring additional input from developers for comprehensive coverage."}, {"letter": "C", "text": "GitHub Copilot can handle any complexity in code and automatically generate appropriate unit tests."}, {"letter": "D", "text": "GitHub Copilot can generate all types of unit tests, including those for edge cases and complex integration scenarios."}], "is_multi": false, "answers": ["B"], "explanation": ""}, {"number": 116, "question": "What practices enhance the quality of suggestions provided GitHub Copilot? (Choose three.)", "options": [{"letter": "A", "text": "Using meaningful variable names"}, {"letter": "B", "text": "Clearly defining the problem or task"}, {"letter": "C", "text": "Including personal information in the code comments"}, {"letter": "D", "text": "Providing examples of desired output"}, {"letter": "E", "text": "Use a gitignore file to exclude irrelevant files"}], "is_multi": true, "answers": ["A", "B", "D"], "explanation": ""}, {"number": 117, "question": "What is a key consideration when relying on GitHub Copilot Chat’s explanations of code functionality and proposed improvements?", "options": [{"letter": "A", "text": "The explanations are primarily derived from user-provided documentation."}, {"letter": "B", "text": "The explanations are dynamically updated based on user feedback."}, {"letter": "C", "text": "GitHub Copilot Chat uses a static database for generating explanations."}, {"letter": "D", "text": "Reviewing and validating the generated output for accuracy and completeness."}], "is_multi": false, "answers": ["D"], "explanation": ""}]}
-    </script>
-
-    <!-- App Frontend Logic (JavaScript) -->
     <script>
-        // Get the embedded data
-        const EXAMS_DATA = JSON.parse(document.getElementById('examsData').textContent);
-        
-        // App State
-        let state = {
-            mode: 'practice', // 'practice' or 'exam'
-            selectedSets: ['set4', 'set5'], // array of set names
-            shuffleQuestions: false,
-            shuffleOptions: false,
-            questionLimit: 'all',
-            
-            questions: [], // active questions list
-            currentIndex: 0,
-            answers: {}, // user selections e.g.: { index: ['A', 'C'] }
-            checked: {}, // checked in practice mode e.g.: { index: true }
-            marked: {}, // marked for review e.g.: { index: true }
-            
-            timeRemaining: 100 * 60, // in seconds
-            timeSpent: 0,
-            timerId: null,
-            examActive: false
-        };
-
-        // LocalStorage helpers
-        const STORAGE_KEY = 'gh300_practice_state_117q_v1';
-        
-        function saveToLocalStorage() {
-            const copy = { ...state };
-            // Do not save the raw timer interval ID
-            copy.timerId = null;
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(copy));
-        }
-
-        function loadFromLocalStorage() {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            if (raw) {
-                try {
-                    const loaded = JSON.parse(raw);
-                    state = { ...state, ...loaded };
-                    return true;
-                } catch (e) {
-                    console.error('Failed to parse localStorage state', e);
-                }
-            }
+        // Hệ thống bắt lỗi toàn cục
+        window.onerror = function (message, source, lineno, colno, error) {
+            logDebug(`🚨 LỖI TOÀN CỤC:<br>${message}<br>Dòng: ${lineno}:${colno}`);
             return false;
-        }
-
-        function clearLocalStorage() {
-            localStorage.removeItem(STORAGE_KEY);
-        }
-
-        // Helper to inline parse simple Markdown formatting: **bold** and `code` -> HTML
-        function formatMarkdown(text) {
-            if (!text) return '';
-            let formatted = text
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>')
-                .replace(/`(.*?)`/g, '<code class="px-1.5 py-0.5 font-mono text-xs bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-sky-400 rounded">$1</code>');
-            
-            // Check for multiline shell blocks of code or block list
-            return formatted;
-        }
-
-        // Fisher-Yates shuffle helper
-        function shuffleArray(array) {
-            const arr = [...array];
-            for (let i = arr.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [arr[i], arr[j]] = [arr[j], arr[i]];
-            }
-            return arr;
-        }
-
-        // DOM elements
-        const dom = {
-            html: document.documentElement,
-            themeToggle: document.getElementById('themeToggle'),
-            sunIcon: document.getElementById('sunIcon'),
-            moonIcon: document.getElementById('moonIcon'),
-            resetSessionBtn: document.getElementById('resetSessionBtn'),
-            
-            setupScreen: document.getElementById('setupScreen'),
-            setupForm: document.getElementById('setupForm'),
-            examPanel: document.getElementById('examPanel'),
-            resultsScreen: document.getElementById('resultsScreen'),
-            
-            activeSetBadge: document.getElementById('activeSetBadge'),
-            currentQuestionNum: document.getElementById('currentQuestionNum'),
-            totalQuestionsNum: document.getElementById('totalQuestionsNum'),
-            progressBar: document.getElementById('progressBar'),
-            markForReviewBtn: document.getElementById('markForReviewBtn'),
-            markReviewText: document.getElementById('markReviewText'),
-            examTimer: document.getElementById('examTimer'),
-            examTimerContainer: document.getElementById('examTimerContainer'),
-            
-            originalQuestionNum: document.getElementById('originalQuestionNum'),
-            questionText: document.getElementById('questionText'),
-            optionsList: document.getElementById('optionsList'),
-            checkAnswerContainer: document.getElementById('checkAnswerContainer'),
-            checkAnswerBtn: document.getElementById('checkAnswerBtn'),
-            showExplanationDirectBtn: document.getElementById('showExplanationDirectBtn'),
-            feedbackBox: document.getElementById('feedbackBox'),
-            feedbackStatus: document.getElementById('feedbackStatus'),
-            feedbackExplanation: document.getElementById('feedbackExplanation'),
-            multiAnswerAlert: document.getElementById('multiAnswerAlert'),
-            
-            prevBtn: document.getElementById('prevBtn'),
-            nextBtn: document.getElementById('nextBtn'),
-            submitExamBtn: document.getElementById('submitExamBtn'),
-            
-            searchBar: document.getElementById('searchBar'),
-            questionsGrid: document.getElementById('questionsGrid'),
-            answeredStatusLabel: document.getElementById('answeredStatusLabel'),
-            quitExamBtn: document.getElementById('quitExamBtn'),
-            
-            finalScorePercent: document.getElementById('finalScorePercent'),
-            passBadge: document.getElementById('passBadge'),
-            failBadge: document.getElementById('failBadge'),
-            resultOverviewText: document.getElementById('resultOverviewText'),
-            statCorrect: document.getElementById('statCorrect'),
-            statIncorrect: document.getElementById('statIncorrect'),
-            statUnanswered: document.getElementById('statUnanswered'),
-            statTimeSpent: document.getElementById('statTimeSpent'),
-            retryExamBtn: document.getElementById('retryExamBtn'),
-            goToSetupBtn: document.getElementById('goToSetupBtn'),
-            
-            reviewFilters: document.getElementById('reviewFilters'),
-            countReviewAll: document.getElementById('countReviewAll'),
-            countReviewCorrect: document.getElementById('countReviewCorrect'),
-            countReviewIncorrect: document.getElementById('countReviewIncorrect'),
-            reviewCardsContainer: document.getElementById('reviewCardsContainer')
         };
 
-        // Dark / Light Theme switching
-        function initTheme() {
-            if (localStorage.theme === 'light' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: light)').matches)) {
-                dom.html.classList.remove('dark');
-                dom.sunIcon.classList.add('hidden');
-                dom.moonIcon.classList.remove('hidden');
-            } else {
-                dom.html.classList.add('dark');
-                dom.moonIcon.classList.add('hidden');
-                dom.sunIcon.classList.remove('hidden');
-            }
-        }
+        let mediaStream = null;
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let currentAudioUrl = null;
+        let mimeType = '';
 
-        dom.themeToggle.addEventListener('click', () => {
-            if (dom.html.classList.contains('dark')) {
-                dom.html.classList.remove('dark');
-                localStorage.theme = 'light';
-                dom.sunIcon.classList.add('hidden');
-                dom.moonIcon.classList.remove('hidden');
+        const recordBtn = document.getElementById('recordBtn');
+        const playBtn = document.getElementById('playBtn');
+        const status = document.getElementById('status');
+        const audioPlayback = document.getElementById('audioPlayback');
+        const wave = document.getElementById('wave');
+        const debugEl = document.getElementById('debug');
+
+        // Hàm log thông tin debug
+        const logDebug = (msg) => {
+            console.log(msg);
+            const time = new Date().toLocaleTimeString();
+            debugEl.innerHTML += `[${time}] ${msg}<br>`;
+            debugEl.scrollTop = debugEl.scrollHeight; // Cuộn xuống dưới cùng
+        };
+
+        logDebug("Ứng dụng bắt đầu.");
+
+        // Yêu cầu quyền Micro lần đầu khi load trang
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(stream => {
+                status.textContent = 'Sẵn sàng! Nhấn giữ nút để bắt đầu.';
+                logDebug("Đã cấp quyền Micro thành công lần đầu.");
+
+                // Giải phóng ngay micro ban đầu để tránh biểu tượng micro màu cam liên tục trên màn hình
+                stream.getTracks().forEach(track => track.stop());
+                logDebug("Đã tạm thời đóng micro để lấy quyền.");
+
+                // Kiểm tra thiết bị iOS/Safari để ưu tiên audio/mp4
+                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                              (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+                const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+                
+                logDebug(`Hệ điều hành: ${isIOS ? 'iOS (iPhone/iPad)' : 'Khác'}, Trình duyệt Safari: ${isSafari}`);
+
+                // Đặt ưu tiên định dạng: iOS/Safari BẮT BUỘC phải dùng audio/mp4 để thẻ <audio> phát được
+                const types = isIOS || isSafari ? [
+                    'audio/mp4',
+                    'audio/aac',
+                    'audio/webm;codecs=opus',
+                    'audio/webm',
+                    'audio/wav'
+                ] : [
+                    'audio/webm;codecs=opus',
+                    'audio/webm',
+                    'audio/mp4',
+                    'audio/ogg',
+                    'audio/wav'
+                ];
+
+                for (const type of types) {
+                    if (MediaRecorder.isTypeSupported(type)) {
+                        mimeType = type;
+                        break;
+                    }
+                }
+                logDebug(`Định dạng hỗ trợ được chọn: ${mimeType}`);
+            })
+            .catch(err => {
+                console.error('Lỗi cấp quyền micro:', err);
+                status.textContent = 'Lỗi cấp quyền Micro. Hãy tải lại trang và cho phép.';
+                logDebug(`❌ Lỗi cấp quyền Micro: ${err.name} - ${err.message}`);
+            });
+
+        // Hàm cập nhật giao diện của nút Nghe lại / Tạm dừng
+        const updatePlayBtnState = (isPlaying) => {
+            if (isPlaying) {
+                playBtn.innerHTML = '<span>⏸</span> Tạm dừng';
+                playBtn.style.backgroundColor = '#ff9500'; // Đổi sang màu cam khi đang phát
+                playBtn.style.boxShadow = '0 8px 16px rgba(255, 149, 0, 0.35)';
+                status.textContent = '🎧 Đang phát lại...';
             } else {
-                dom.html.classList.add('dark');
-                localStorage.theme = 'dark';
-                dom.moonIcon.classList.add('hidden');
-                dom.sunIcon.classList.remove('hidden');
+                playBtn.innerHTML = '<span>▶</span> Nghe lại';
+                playBtn.style.backgroundColor = '#34c759'; // Đổi lại màu xanh lá khi dừng
+                playBtn.style.boxShadow = '0 8px 16px rgba(52, 199, 89, 0.35)';
+                status.textContent = 'Sẵn sàng! Nhấn giữ nút màu xanh để ghi âm mới.';
+            }
+        };
+
+        // Xử lý sự kiện nhấn nút Nghe lại (Được coi là cử chỉ người dùng trực tiếp -> 100% hoạt động trên iOS)
+        playBtn.addEventListener('click', () => {
+            logDebug("Đã nhấn nút 'Nghe lại'.");
+            if (audioPlayback.paused) {
+                logDebug(`Bắt đầu phát file: ${audioPlayback.src.substring(0, 40)}...`);
+                audioPlayback.play().then(() => {
+                    logDebug("▶ Âm thanh đang phát.");
+                    updatePlayBtnState(true);
+                }).catch(err => {
+                    console.error('Lỗi khi phát lại:', err);
+                    status.innerHTML = `<span style="color: #ff3b30;">Lỗi phát: ${err.name}</span>`;
+                    logDebug(`❌ LỖI PHÁT ÂM THANH: ${err.name} - ${err.message}`);
+                });
+            } else {
+                logDebug("Đã nhấn tạm dừng.");
+                audioPlayback.pause();
+                updatePlayBtnState(false);
             }
         });
 
-        initTheme();
+        audioPlayback.onended = () => {
+            logDebug("⏹ Phát âm thanh kết thúc.");
+            updatePlayBtnState(false);
+        };
 
-        // Initialize exam questions based on configuration
-        function initializeQuestions() {
-            let merged = [];
-            
-            state.selectedSets.forEach(setName => {
-                if (EXAMS_DATA[setName]) {
-                    // Add parent set labeling to the questions
-                    const mapped = EXAMS_DATA[setName].map(q => ({
-                        ...q,
-                        originSet: setName.toUpperCase(),
-                        originalNumber: q.number
-                    }));
-                    merged = merged.concat(mapped);
-                }
-            });
-
-            // Shuffle questions if toggled
-            if (state.shuffleQuestions) {
-                merged = shuffleArray(merged);
-            }
-
-            // Shuffle options if toggled
-            if (state.shuffleOptions) {
-                merged = merged.map(q => ({
-                    ...q,
-                    options: shuffleArray(q.options)
-                }));
-            }
-
-            // Question limits
-            if (state.questionLimit !== 'all') {
-                const limit = parseInt(state.questionLimit);
-                if (!isNaN(limit)) {
-                    merged = merged.slice(0, limit);
-                }
-            }
-
-            state.questions = merged;
-            state.currentIndex = 0;
-            state.answers = {};
-            state.checked = {};
-            state.marked = {};
-            state.timeRemaining = merged.length * 100; // 100 seconds per question i.e. 100 mins for 60qs
-            state.timeSpent = 0;
-        }
-
-        // Setup form submission
-        dom.setupForm.addEventListener('submit', (e) => {
+        // Xử lý sự kiện nhấn giữ (hỗ trợ cả trackpad trên Mac và cảm ứng trên iPhone)
+        const startRecording = (e) => {
             e.preventDefault();
+            logDebug("Bắt đầu nhấn giữ ghi âm.");
+            recordBtn.classList.add('active');
             
-            // Collect Form Values
-            const setCheckboxes = document.querySelectorAll('input[name="sets"]:checked');
-            const modeRadio = document.querySelector('input[name="mode"]:checked');
+            // Ẩn nút phát lại cũ khi bắt đầu thu âm mới
+            playBtn.classList.remove('visible');
+            audioPlayback.pause();
+            updatePlayBtnState(false);
             
-            const sets = Array.from(setCheckboxes).map(cb => cb.value);
-            if (sets.length === 0) {
-                alert('Vui lòng chọn ít nhất một bộ câu hỏi!');
-                return;
-            }
+            status.textContent = '🎙️ Đang khởi động micro...';
             
-            state.selectedSets = sets;
-            state.mode = modeRadio.value;
-            state.shuffleQuestions = document.getElementById('shuffleQuestions').checked;
-            state.shuffleOptions = document.getElementById('shuffleOptions').checked;
-            state.questionLimit = document.getElementById('questionLimit').value;
-            
-            initializeQuestions();
-            startExamSession();
-        });
+            // YÊU CẦU MỘT LUỒNG MICRO MỚI CHO TỪNG PHIÊN GHI ÂM (Bí quyết sửa lỗi iOS Safari)
+            // Nhờ đó iOS không thể tự động tắt hay duck tiếng của stream cũ sau khi phát nhạc
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    mediaStream = stream;
+                    audioChunks = []; // Reset dữ liệu đệm trước khi thu âm mới
+                    logDebug("Đã kết nối luồng Micro mới.");
 
-        function startExamSession() {
-            state.examActive = true;
-            
-            // Show exam UI
-            dom.setupScreen.classList.add('hidden');
-            dom.resultsScreen.classList.add('hidden');
-            dom.examPanel.classList.remove('hidden');
-            
-            // Adjust header depending on mode
-            if (state.mode === 'practice') {
-                dom.examTimerContainer.classList.add('hidden');
-                dom.checkAnswerContainer.classList.remove('hidden');
-                dom.submitExamBtn.classList.add('hidden');
-            } else {
-                dom.examTimerContainer.classList.remove('hidden');
-                dom.checkAnswerContainer.classList.add('hidden');
-                dom.submitExamBtn.classList.remove('hidden');
-                startTimer();
-            }
+                    try {
+                        const options = mimeType ? { mimeType } : {};
+                        mediaRecorder = new MediaRecorder(mediaStream, options);
+                        logDebug(`Đã khởi tạo MediaRecorder mới.`);
 
-            renderQuestion();
-            renderGrid();
-            saveToLocalStorage();
-        }
-
-        // Timer controller
-        function startTimer() {
-            if (state.timerId) clearInterval(state.timerId);
-            
-            state.timerId = setInterval(() => {
-                if (!state.examActive) {
-                    clearInterval(state.timerId);
-                    return;
-                }
-                
-                state.timeRemaining--;
-                state.timeSpent++;
-                
-                if (state.timeRemaining <= 0) {
-                    clearInterval(state.timerId);
-                    alert('Hết giờ làm bài! Hệ thống tự động nộp bài.');
-                    submitExam();
-                } else {
-                    updateTimerDisplay();
-                }
-            }, 1000);
-            updateTimerDisplay();
-        }
-
-        function updateTimerDisplay() {
-            const mins = Math.floor(state.timeRemaining / 60);
-            const secs = state.timeRemaining % 60;
-            dom.examTimer.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-            if (state.timeRemaining < 5 * 60) { // less than 5 mins limit
-                dom.examTimer.classList.remove('text-emerald-500');
-                dom.examTimer.classList.add('text-red-500', 'animate-pulse');
-            } else {
-                dom.examTimer.classList.remove('text-red-500', 'animate-pulse');
-                dom.examTimer.classList.add('text-emerald-500');
-            }
-        }
-
-        // Render current question
-        function renderQuestion() {
-            if (state.questions.length === 0) return;
-            const q = state.questions[state.currentIndex];
-            
-            // Badges & count
-            dom.activeSetBadge.textContent = q.originSet;
-            dom.currentQuestionNum.textContent = state.currentIndex + 1;
-            dom.totalQuestionsNum.textContent = state.questions.length;
-            dom.originalQuestionNum.textContent = `Bộ gốc: ${q.originSet} • Câu hỏi ${q.originalNumber}`;
-            
-            // Progress width
-            const percent = ((state.currentIndex + 1) / state.questions.length) * 100;
-            dom.progressBar.style.width = `${percent}%`;
-
-            // Prompt text (Simple formatting)
-            dom.questionText.innerHTML = formatMarkdown(q.question);
-            
-            // Check Multi Answer Alert banner
-            if (q.is_multi) {
-                dom.multiAnswerAlert.classList.remove('hidden');
-            } else {
-                dom.multiAnswerAlert.classList.add('hidden');
-            }
-
-            // Render Options
-            dom.optionsList.innerHTML = '';
-            
-            const userAns = state.answers[state.currentIndex] || [];
-            const isChecked = state.checked[state.currentIndex];
-
-            q.options.forEach(opt => {
-                const isSelected = userAns.includes(opt.letter);
-                const isCorrect = q.answers.includes(opt.letter);
-                
-                const optItem = document.createElement('div');
-                optItem.className = `flex items-center p-3 border rounded-lg cursor-pointer transition-all duration-150 relative ${
-                    isSelected 
-                    ? 'border-indigo-500 bg-indigo-500/5 dark:border-sky-500 dark:bg-sky-500/5' 
-                    : 'border-slate-200 dark:border-[#30363d] hover:bg-slate-100 dark:hover:bg-[#161b22]'
-                }`;
-                
-                // Color codes for practice mode verification
-                if (state.mode === 'practice' && isChecked) {
-                    optItem.style.pointerEvents = 'none'; // disable pointer
-                    if (isCorrect) {
-                        optItem.className = 'flex items-center p-3 border border-emerald-500 bg-emerald-500/10 rounded-lg relative';
-                    } else if (isSelected) {
-                        optItem.className = 'flex items-center p-3 border border-rose-500 bg-rose-500/10 rounded-lg relative';
-                    }
-                }
-
-                // Input type (checkbox for multi-select, radio for single)
-                const inputType = q.is_multi ? 'checkbox' : 'radio';
-                const inputId = `opt_${opt.letter}`;
-                
-                optItem.innerHTML = `
-                    <input type="${inputType}" id="${inputId}" name="active_opt" value="${opt.letter}" 
-                           ${isSelected ? 'checked' : ''} 
-                           ${(state.mode === 'practice' && isChecked) ? 'disabled' : ''} 
-                           class="w-4 h-4 text-indigo-600 dark:text-sky-500 border-slate-300 dark:border-slate-700 rounded mr-3 shrink-0">
-                    <label for="${inputId}" class="text-sm font-medium w-full cursor-pointer leading-tight block">
-                        <span class="inline-block font-extrabold mr-1 border-r pr-2 border-slate-200 dark:border-slate-800">${opt.letter})</span> ${formatMarkdown(opt.text)}
-                    </label>
-                `;
-
-                // Add select click handler
-                if (!(state.mode === 'practice' && isChecked)) {
-                    optItem.addEventListener('click', (e) => {
-                        if (e.target.tagName !== 'INPUT') {
-                            const inp = optItem.querySelector('input');
-                            inp.checked = !inp.checked;
-                            handleSelectionChange(inp);
-                        } else {
-                            handleSelectionChange(e.target);
-                        }
-                    });
-                }
-                
-                dom.optionsList.appendChild(optItem);
-            });
-
-            // Set up review bookmark status
-            if (state.marked[state.currentIndex]) {
-                dom.markReviewText.textContent = 'Bỏ đánh dấu';
-                dom.markForReviewBtn.classList.remove('text-yellow-600');
-                dom.markForReviewBtn.classList.add('text-yellow-500', 'font-semibold');
-            } else {
-                dom.markReviewText.textContent = 'Đánh dấu xem lại';
-                dom.markForReviewBtn.classList.remove('text-yellow-500', 'font-semibold');
-                dom.markForReviewBtn.classList.add('text-yellow-600');
-            }
-
-            // Handle Practice Mode Feedback
-            if (state.mode === 'practice') {
-                if (isChecked) {
-                    dom.checkAnswerBtn.classList.add('hidden');
-                    dom.showExplanationDirectBtn.classList.add('hidden');
-                    dom.feedbackBox.classList.remove('hidden');
-                    
-                    const isPerfect = userAns.length === q.answers.length && userAns.every(v => q.answers.includes(v));
-                    
-                    if (isPerfect) {
-                        dom.feedbackBox.className = 'p-4 rounded-xl border border-emerald-500 bg-emerald-500/5 text-emerald-800 dark:text-emerald-300 space-y-2';
-                        dom.feedbackStatus.innerHTML = `
-                            <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                            <span>CHÍNH XÁC!</span>
-                        `;
-                    } else {
-                        dom.feedbackBox.className = 'p-4 rounded-xl border border-rose-500 bg-rose-500/5 text-rose-800 dark:text-rose-300 space-y-2';
-                        dom.feedbackStatus.innerHTML = `
-                            <svg class="w-5 h-5 text-rose-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                            <span>CHƯA ĐÚNG! Đáp án của bạn: ${userAns.join(', ') || 'Để trống'}. Đáp án đúng: ${q.answers.join(', ')}</span>
-                        `;
-                    }
-                    
-                    dom.feedbackExplanation.innerHTML = `<strong>Giải thích (Rationale):</strong> ${formatMarkdown(q.explanation)}`;
-                } else {
-                    dom.checkAnswerBtn.classList.remove('hidden');
-                    dom.showExplanationDirectBtn.classList.remove('hidden');
-                    dom.feedbackBox.classList.add('hidden');
-                    
-                    // Check button disabled unless answer selected
-                    dom.checkAnswerBtn.disabled = userAns.length === 0;
-                    if (userAns.length === 0) {
-                        dom.checkAnswerBtn.classList.add('opacity-50', 'cursor-not-allowed');
-                    } else {
-                        dom.checkAnswerBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                    }
-                }
-            }
-
-            // Navigation disabling rules
-            dom.prevBtn.disabled = state.currentIndex === 0;
-            if (state.currentIndex === 0) {
-                dom.prevBtn.classList.add('opacity-50', 'cursor-not-allowed');
-            } else {
-                dom.prevBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-            }
-
-            if (state.currentIndex === state.questions.length - 1) {
-                dom.nextBtn.textContent = 'Hoàn thành';
-            } else {
-                dom.nextBtn.innerHTML = `<span>Câu tiếp</span> <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"></path></svg>`;
-            }
-        }
-
-        // Handle answer clicking
-        function handleSelectionChange(inp) {
-            const q = state.questions[state.currentIndex];
-            const letter = inp.value;
-            
-            let answersList = state.answers[state.currentIndex] || [];
-            
-            if (q.is_multi) {
-                if (inp.checked) {
-                    if (!answersList.includes(letter)) answersList.push(letter);
-                } else {
-                    answersList = answersList.filter(item => item !== letter);
-                }
-            } else {
-                answersList = [letter];
-                // Uncheck all other inputs
-                const allInputs = dom.optionsList.querySelectorAll('input');
-                allInputs.forEach(item => {
-                    if (item !== inp) {
-                        item.checked = false;
-                        item.closest('div').classList.remove('border-indigo-500', 'bg-indigo-500/5', 'dark:border-sky-500', 'dark:bg-sky-500/5');
-                    }
-                });
-            }
-
-            // Set wrapper styling
-            const optWrapper = inp.closest('div');
-            if (inp.checked) {
-                optWrapper.classList.add('border-indigo-500', 'bg-indigo-500/5', 'dark:border-sky-500', 'dark:bg-sky-500/5');
-            } else {
-                optWrapper.classList.remove('border-indigo-500', 'bg-indigo-500/5', 'dark:border-sky-500', 'dark:bg-sky-500/5');
-            }
-
-            state.answers[state.currentIndex] = answersList;
-            
-            // Enable Check Answer in Practice
-            if (state.mode === 'practice') {
-                dom.checkAnswerBtn.disabled = answersList.length === 0;
-                if (answersList.length === 0) {
-                    dom.checkAnswerBtn.classList.add('opacity-50', 'cursor-not-allowed');
-                } else {
-                    dom.checkAnswerBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                }
-            }
-
-            renderGrid();
-            saveToLocalStorage();
-        }
-
-        // Toggle Mark for review
-        dom.markForReviewBtn.addEventListener('click', () => {
-            if (state.marked[state.currentIndex]) {
-                delete state.marked[state.currentIndex];
-            } else {
-                state.marked[state.currentIndex] = true;
-            }
-            renderQuestion();
-            renderGrid();
-            saveToLocalStorage();
-        });
-
-        // Question sidebar navigation grid
-        function renderGrid() {
-            dom.questionsGrid.innerHTML = '';
-            
-            let answeredCount = 0;
-            
-            state.questions.forEach((q, idx) => {
-                const btn = document.createElement('button');
-                btn.textContent = idx + 1;
-                
-                const isCurrent = idx === state.currentIndex;
-                const hasSelected = (state.answers[idx] || []).length > 0;
-                const isMarked = state.marked[idx];
-                const isCheckedPractice = state.checked[idx];
-                
-                if (hasSelected) answeredCount++;
-
-                // Determine CSS background styling classes
-                let baseStyle = "h-8 w-8 text-xs font-semibold rounded-md border flex items-center justify-center transition-all duration-100 cursor-pointer ";
-                
-                if (isCurrent) {
-                    baseStyle += "border-indigo-600 ring-2 ring-indigo-500/40 dark:border-sky-500 dark:ring-sky-500/40 text-[#c9d1d9] font-bold ";
-                } else {
-                    baseStyle += "border-slate-200 dark:border-[#30363d] ";
-                }
-
-                if (isMarked) {
-                    baseStyle += "bg-yellow-500 text-white border-yellow-600 hover:bg-yellow-600 ";
-                } else if (state.mode === 'practice' && isCheckedPractice) {
-                    const uAns = state.answers[idx] || [];
-                    const isPerfect = uAns.length === q.answers.length && uAns.every(v => q.answers.includes(v));
-                    
-                    if (isPerfect) {
-                        baseStyle += "bg-emerald-500 text-white border-emerald-600 hover:bg-emerald-600 ";
-                    } else {
-                        baseStyle += "bg-rose-500 text-white border-rose-600 hover:bg-rose-600 ";
-                    }
-                } else if (hasSelected) {
-                    baseStyle += "bg-slate-300 dark:bg-slate-700 text-slate-800 dark:text-white hover:bg-slate-400 dark:hover:bg-slate-600 ";
-                } else {
-                    baseStyle += "bg-slate-100 dark:bg-[#161b22] text-slate-700 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-[#202730] ";
-                }
-
-                btn.className = baseStyle;
-                btn.addEventListener('click', () => {
-                    state.currentIndex = idx;
-                    renderQuestion();
-                });
-
-                dom.questionsGrid.appendChild(btn);
-            });
-
-            dom.answeredStatusLabel.textContent = `${answeredCount} / ${state.questions.length} câu đã chọn`;
-        }
-
-        // Navigation actions
-        dom.prevBtn.addEventListener('click', () => {
-            if (state.currentIndex > 0) {
-                state.currentIndex--;
-                renderQuestion();
-                saveToLocalStorage();
-            }
-        });
-
-        dom.nextBtn.addEventListener('click', () => {
-            if (state.currentIndex < state.questions.length - 1) {
-                state.currentIndex++;
-                renderQuestion();
-                saveToLocalStorage();
-            } else {
-                // Clicking Next on the final question
-                if (state.mode === 'practice') {
-                    // Finish practice directly and open results
-                    submitExam();
-                } else {
-                    // Prompt for review
-                    const ansCount = Object.keys(state.answers).length;
-                    const confirmSubmit = confirm(`Bạn đã làm xong. Bạn đã trả lời ${ansCount} trên ${state.questions.length} câu hỏi. Bạn có thực sự muốn nộp bài ngay lúc này?`);
-                    if (confirmSubmit) submitExam();
-                }
-            }
-        });
-
-        // Handle Check Answer Click (Practice Mode Only)
-        dom.checkAnswerBtn.addEventListener('click', () => {
-            const ansList = state.answers[state.currentIndex] || [];
-            if (ansList.length === 0) return;
-            
-            state.checked[state.currentIndex] = true;
-            renderQuestion();
-            renderGrid();
-            saveToLocalStorage();
-
-            // Smooth scroll feedback box into viewport
-            dom.feedbackBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        });
-
-        dom.showExplanationDirectBtn.addEventListener('click', () => {
-            state.checked[state.currentIndex] = true;
-            renderQuestion();
-            renderGrid();
-            saveToLocalStorage();
-        });
-
-        // Submit complete exam / practice report
-        dom.submitExamBtn.addEventListener('click', () => {
-            const isSure = confirm('Bạn có chắc chắn muốn nộp bài thi?');
-            if (isSure) submitExam();
-        });
-
-        function submitExam() {
-            state.examActive = false;
-            if (state.timerId) clearInterval(state.timerId);
-            
-            // Calculate final statistics
-            let scoreCorrect = 0;
-            let scoreIncorrect = 0;
-            let unanswered = 0;
-            
-            state.questions.forEach((q, idx) => {
-                const userAns = state.answers[idx] || [];
-                if (userAns.length === 0) {
-                    unanswered++;
-                } else {
-                    const isPerfect = userAns.length === q.answers.length && userAns.every(val => q.answers.includes(val));
-                    if (isPerfect) scoreCorrect++;
-                    else scoreIncorrect++;
-                }
-            });
-
-            const scorePercent = Math.round((scoreCorrect / state.questions.length) * 100) || 0;
-            
-            // Render text
-            dom.finalScorePercent.textContent = `${scorePercent}%`;
-            
-            const isPassing = scorePercent >= 70; // passing is 70%
-            if (isPassing) {
-                dom.passBadge.classList.remove('hidden');
-                dom.failBadge.classList.add('hidden');
-            } else {
-                dom.failBadge.classList.remove('hidden');
-                dom.passBadge.classList.add('hidden');
-            }
-
-            dom.resultOverviewText.textContent = `Bạn đã làm đúng ${scoreCorrect} trên tổng số ${state.questions.length} câu hỏi. Điểm thi đỗ tối thiểu là 70% (đáp ứng tương đương mốc 700/1000 điểm của kỳ thi chứng chỉ chính thức GH-300).`;
-
-            dom.statCorrect.textContent = scoreCorrect;
-            dom.statIncorrect.textContent = scoreIncorrect + unanswered;
-            dom.statUnanswered.textContent = unanswered;
-            
-            // calculate elapsed time
-            const spentSecs = state.timeSpent;
-            const minutes = Math.floor(spentSecs / 60);
-            const seconds = spentSecs % 60;
-            dom.statTimeSpent.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-
-            // Toggle screens
-            dom.examPanel.classList.add('hidden');
-            dom.resultsScreen.classList.remove('hidden');
-            
-            // Generate review layout
-            renderReviewCards('all');
-            
-            // Auto save state
-            saveToLocalStorage();
-        }
-
-        // Quick search implementation (real-time filter sidebar)
-        dom.searchBar.addEventListener('input', (e) => {
-            const query = e.target.value.toLowerCase().trim();
-            if (!query) {
-                renderGrid();
-                return;
-            }
-
-            // Find matching indexes
-            dom.questionsGrid.innerHTML = '';
-            state.questions.forEach((q, idx) => {
-                const matchesText = q.question.toLowerCase().includes(query) || q.explanation.toLowerCase().includes(query) || q.options.some(o => o.text.toLowerCase().includes(query));
-                if (matchesText) {
-                    const btn = document.createElement('button');
-                    btn.textContent = idx + 1;
-                    
-                    const isCurrent = idx === state.currentIndex;
-                    let baseStyle = "h-8 w-8 text-xs font-semibold rounded-md border flex items-center justify-center transition-all duration-100 cursor-pointer ";
-                    
-                    if (isCurrent) {
-                        baseStyle += "border-indigo-600 ring-2 ring-indigo-500/40 dark:border-sky-500 dark:ring-sky-500/40 text-white font-bold ";
-                    } else {
-                        baseStyle += "border-slate-200 dark:border-[#30363d] ";
-                    }
-
-                    const hasSelected = (state.answers[idx] || []).length > 0;
-                    if (hasSelected) {
-                        baseStyle += "bg-slate-300 dark:bg-slate-700 text-slate-800 dark:text-white ";
-                    } else {
-                        baseStyle += "bg-slate-50 dark:bg-[#161b22] text-slate-700 dark:text-slate-400 ";
-                    }
-                    
-                    btn.className = baseStyle;
-                    btn.addEventListener('click', () => {
-                        state.currentIndex = idx;
-                        renderQuestion();
-                    });
-                    dom.questionsGrid.appendChild(btn);
-                }
-            });
-        });
-
-        // Quit or menu click
-        dom.quitExamBtn.addEventListener('click', () => {
-            const quitConfirm = confirm('Bạn có chắc chắn muốn thoát về màn hình thiết lập chính? Trạng thái lựa chọn hiện tại vẫn sẽ được lưu trữ lại.');
-            if (quitConfirm) {
-                dom.examPanel.classList.add('hidden');
-                dom.setupScreen.classList.remove('hidden');
-                state.examActive = false;
-                if (state.timerId) clearInterval(state.timerId);
-            }
-        });
-
-        // Result screen Navigation triggers
-        dom.goToSetupBtn.addEventListener('click', () => {
-            clearLocalStorage();
-            dom.resultsScreen.classList.add('hidden');
-            dom.setupScreen.classList.remove('hidden');
-        });
-
-        dom.retryExamBtn.addEventListener('click', () => {
-            // Restart exact same test format
-            initializeQuestions();
-            startExamSession();
-        });
-
-        dom.resetSessionBtn.addEventListener('click', () => {
-            const isSure = confirm('Bạn có muốn xóa dữ liệu cũ và bắt đầu mới hoàn toàn từ đầu? Tất cả lịch sử làm bài thi sẽ bị xóa.');
-            if (isSure) {
-                clearLocalStorage();
-                location.reload();
-            }
-        });
-
-        // Results screen reviewer card builder
-        function renderReviewCards(filter = 'all') {
-            dom.reviewCardsContainer.innerHTML = '';
-            
-            let filterCorrectCount = 0;
-            let filterIncorrectCount = 0;
-            
-            // Loop and compile
-            state.questions.forEach((q, idx) => {
-                const userAns = state.answers[idx] || [];
-                const isPerfect = userAns.length === q.answers.length && userAns.every(val => q.answers.includes(val));
-                
-                if (isPerfect) filterCorrectCount++;
-                else filterIncorrectCount++;
-
-                // Filter condition block
-                if (filter === 'correct' && !isPerfect) return;
-                if (filter === 'incorrect' && isPerfect) return;
-
-                const card = document.createElement('div');
-                card.className = `p-5 border rounded-xl bg-white dark:bg-[#161b22] shadow-sm space-y-4 ${
-                    isPerfect 
-                    ? 'border-emerald-500/30' 
-                    : 'border-rose-500/30'
-                }`;
-
-                // Create options HTML checklist
-                let optionsHtml = '';
-                q.options.forEach(o => {
-                    const isSelected = userAns.includes(o.letter);
-                    const isRight = q.answers.includes(o.letter);
-                    
-                    let bgStyle = 'border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-[#0d1117]/10';
-                    let badge = '';
-                    
-                    if (isRight) {
-                        bgStyle = 'border border-emerald-500/20 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 font-medium';
-                        badge = '<span class="ml-auto text-xs bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-400 px-2 py-0.5 rounded-md font-bold">LỰA CHỌN ĐÚNG</span>';
-                    } else if (isSelected) {
-                        bgStyle = 'border border-rose-500/20 bg-rose-500/10 text-rose-800 dark:text-rose-400';
-                        badge = '<span class="ml-auto text-xs bg-rose-100 dark:bg-rose-500/20 text-rose-800 dark:text-rose-400 px-2 py-0.5 rounded-md font-bold">BẠN CHỌN SAI</span>';
-                    } else if (isSelected && isRight) {
-                        bgStyle = 'border border-emerald-500 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 font-bold';
-                        badge = '<span class="ml-auto text-xs bg-emerald-500/20 text-emerald-500 px-2 py-0.5 rounded-md font-bold">BẠN CHỌN ĐÚNG</span>';
-                    }
-
-                    optionsHtml += `
-                        <div class="flex items-center p-2.5 text-xs rounded-lg ${bgStyle}">
-                            <span class="font-bold border-r pr-2 border-slate-200 dark:border-slate-850 mr-2">${o.letter})</span>
-                            <span class="leading-tight">${formatMarkdown(o.text)}</span>
-                            ${badge}
-                        </div>
-                    `;
-                });
-
-                card.innerHTML = `
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-400 border-b border-slate-100 dark:border-[#30363d] pb-2.5 gap-2">
-                        <span class="font-bold text-gray-500">Câu hỏi số ${idx + 1} (Gốc: ${q.originSet} - Câu ${q.originalNumber})</span>
-                        <div class="flex items-center space-x-2">
-                            ${
-                                isPerfect 
-                                ? '<span class="bg-emerald-100 dark:bg-emerald-500/10 text-emerald-800 dark:text-emerald-400 px-2 py-1 rounded font-bold">✓ ĐÚNG</span>' 
-                                : `<span class="bg-rose-100 dark:bg-rose-500/10 text-rose-800 dark:text-rose-400 px-2 py-1 rounded font-bold">✗ SAI (Chọn: ${userAns.join(', ') || 'Trống'})</span>`
+                        mediaRecorder.ondataavailable = event => {
+                            if (event.data && event.data.size > 0) {
+                                audioChunks.push(event.data);
+                                logDebug(`Nhận chunk: ${event.data.size} bytes. Tổng chunks: ${audioChunks.length}`);
                             }
-                        </div>
-                    </div>
-                    
-                    <h4 class="text-sm font-bold text-slate-900 dark:text-white leading-relaxed whitespace-pre-line">${formatMarkdown(q.question)}</h4>
-                    
-                    <div class="space-y-1.5 pt-2">
-                        ${optionsHtml}
-                    </div>
-                    
-                    <div class="p-3 bg-slate-50 dark:bg-[#0d1117] border border-slate-200 dark:border-[#30363d] rounded-lg text-xs leading-relaxed">
-                        <strong class="text-indigo-600 dark:text-sky-400 font-bold block mb-1">Giải thích (Rationale):</strong>
-                        <span>${formatMarkdown(q.explanation)}</span>
-                    </div>
-                `;
-                
-                dom.reviewCardsContainer.appendChild(card);
-            });
+                        };
 
-            // Update quantities in counts
-            dom.countReviewAll.textContent = state.questions.length;
-            dom.countReviewCorrect.textContent = filterCorrectCount;
-            dom.countReviewIncorrect.textContent = filterIncorrectCount;
-        }
+                        mediaRecorder.onerror = event => {
+                            logDebug(`❌ Lỗi MediaRecorder: ${event.error.name} - ${event.error.message}`);
+                        };
 
-        // Filters in Review click hook
-        dom.reviewFilters.addEventListener('click', (e) => {
-            const btn = e.target.closest('button[data-filter]');
-            if (!btn) return;
+                        mediaRecorder.onstop = () => {
+                            logDebug(`MediaRecorder đã dừng. Tổng số chunks: ${audioChunks.length}`);
+                            const actualMimeType = mediaRecorder.mimeType || mimeType || 'audio/mp4';
+                            
+                            // ĐÓNG HOÀN TOÀN luồng micro ngay sau khi ghi âm xong
+                            // Để thiết bị iOS giải phóng hẳn phần cứng micro, sẵn sàng cho việc phát lại qua loa
+                            if (mediaStream) {
+                                mediaStream.getTracks().forEach(track => track.stop());
+                                logDebug("Đã giải phóng micro.");
+                            }
+
+                            try {
+                                const audioBlob = new Blob(audioChunks, { type: actualMimeType });
+                                logDebug(`Đã tạo Blob thành công. Kích thước: ${audioBlob.size} bytes. Kiểu: ${audioBlob.type}`);
+                                
+                                if (currentAudioUrl) {
+                                    URL.revokeObjectURL(currentAudioUrl);
+                                }
+
+                                currentAudioUrl = URL.createObjectURL(audioBlob);
+                                audioPlayback.src = currentAudioUrl;
+                                logDebug(`Đã gán src thành công: ${currentAudioUrl.substring(0, 45)}...`);
+                                
+                                // Hiển thị nút phát lại
+                                playBtn.classList.add('visible');
+                                updatePlayBtnState(false);
+                                status.textContent = '🎙️ Đã ghi âm xong! Nhấn "Nghe lại" ở dưới.';
+                            } catch (blobErr) {
+                                logDebug(`❌ Lỗi tạo Blob/URL: ${blobErr.name} - ${blobErr.message}`);
+                            }
+                        };
+
+                        mediaRecorder.start();
+                        wave.classList.add('active'); // Kích hoạt hiệu ứng sóng âm hoạt họa
+                        status.textContent = '🎙️ Đang ghi âm... (Thả ra để lưu)';
+                        logDebug("MediaRecorder.start() thành công.");
+                    } catch (recErr) {
+                        logDebug(`❌ Lỗi khi khởi động MediaRecorder: ${recErr.name} - ${recErr.message}`);
+                    }
+                })
+                .catch(err => {
+                    logDebug(`❌ Lỗi kết nối Micro: ${err.name} - ${err.message}`);
+                    status.textContent = 'Không thể mở micro. Vui lòng thử lại!';
+                    recordBtn.classList.remove('active');
+                });
+        };
+
+        const stopRecording = (e) => {
+            e.preventDefault();
+            logDebug("Đã thả tay ra khỏi nút ghi âm. Sẽ dừng sau 500ms...");
             
-            // Remove selection class of other siblings
-            dom.reviewFilters.querySelectorAll('button').forEach(item => {
-                item.className = "px-3 py-1.5 rounded-md font-semibold text-slate-500 dark:text-[#8b949e]";
-            });
+            // Cập nhật giao diện nút ngay lập tức để tạo cảm giác phản hồi nhanh
+            recordBtn.classList.remove('active');
+            wave.classList.remove('active'); // Tắt sóng âm hoạt họa
+            status.textContent = '⌛ Đang hoàn tất ghi âm...';
 
-            // Highlight chosen
-            btn.className = "px-3 py-1.5 rounded-md font-semibold bg-white dark:bg-[#30363d] shadow-sm text-slate-800 dark:text-white";
-            
-            const filterType = btn.getAttribute('data-filter');
-            renderReviewCards(filterType);
-        });
-
-        // Core initializer
-        window.addEventListener('load', () => {
-            const activeSessionFound = loadFromLocalStorage();
-            if (activeSessionFound && state.examActive) {
-                const resume = confirm('Tìm thấy một phiên làm bài thi trước đó đang dang dở. Bạn có muốn tiếp tục làm bài tiếp từ vị trí đã dừng không?');
-                if (resume) {
-                    startExamSession();
+            // Trì hoãn 500ms trước khi dừng ghi âm thực tế để không bị mất âm đuôi
+            setTimeout(() => {
+                if (mediaRecorder && mediaRecorder.state === 'recording') {
+                    try {
+                        mediaRecorder.stop();
+                        logDebug("MediaRecorder.stop() đã gọi sau 500ms delay.");
+                    } catch (stopErr) {
+                        logDebug(`❌ Lỗi khi gọi MediaRecorder.stop(): ${stopErr.name} - ${stopErr.message}`);
+                    }
                 } else {
-                    clearLocalStorage();
-                    state.examActive = false;
+                    logDebug(`Không thể dừng: mediaRecorder state đang là ${mediaRecorder ? mediaRecorder.state : 'null'}`);
                 }
+            }, 500);
+        };
+
+        recordBtn.addEventListener('mousedown', startRecording);
+        recordBtn.addEventListener('mouseup', stopRecording);
+        recordBtn.addEventListener('touchstart', startRecording, { passive: false });
+        recordBtn.addEventListener('touchend', stopRecording, { passive: false });
+
+        // Xử lý sự kiện bàn phím: Giữ Space để ghi âm, nhấn F để nghe lại
+        let isSpacePressed = false;
+
+        window.addEventListener('keydown', (e) => {
+            // Chỉ kích hoạt phím tắt nếu người dùng không gõ chữ trong các ô nhập liệu
+            if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') {
+                return;
+            }
+
+            // Giữ Space để ghi âm
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (!isSpacePressed) {
+                    isSpacePressed = true;
+                    logDebug("Keyboard: Nhấn giữ Space để ghi âm.");
+                    startRecording(e);
+                }
+            }
+            
+            // Nhấn phím F để nghe lại hoặc tạm dừng
+            if (e.key === 'f' || e.key === 'F') {
+                e.preventDefault();
+                logDebug("Keyboard: Nhấn phím F để nghe lại.");
+                playBtn.click(); // Mô phỏng nhấn nút Phát lại
             }
         });
 
-        // Let user navigate via keyboard keys (Arrow keys and Space bar)
-        window.addEventListener('keydown', (e) => {
-            if (!state.examActive) return;
-            // ensure active element isn't search inputs or form fields
-            if (document.activeElement === dom.searchBar) return;
-            
-            if (e.key === 'ArrowLeft') {
-                dom.prevBtn.click();
-            } else if (e.key === 'ArrowRight') {
-                dom.nextBtn.click();
-            } else if (e.key === ' ' || e.key === 'Spacebar') {
-                // space bar toggles bookmark mark state
-                e.preventDefault(); // stop page scrolling
-                dom.markForReviewBtn.click();
+        window.addEventListener('keyup', (e) => {
+            if (e.code === 'Space') {
+                if (isSpacePressed) {
+                    e.preventDefault();
+                    isSpacePressed = false;
+                    logDebug("Keyboard: Thả Space để dừng ghi âm.");
+                    stopRecording(e);
+                }
             }
         });
     </script>
 </body>
+
 </html>
